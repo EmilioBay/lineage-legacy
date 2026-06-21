@@ -38,15 +38,35 @@ export const getHomepageData = createServerFn({ method: "GET" }).handler(async (
     }, {});
   }
 
-  const withVotes = (servers ?? []).map((s) => ({ ...s, votes: voteCounts[s.id] ?? 0 }));
+  // Top-10 yearly finishes per server (ranking consistency for trust)
+  let topRankYears: Record<string, number> = {};
+  if (serverIds.length > 0) {
+    const { data: yr } = await sb
+      .from("yearly_rankings")
+      .select("server_id, rank")
+      .in("server_id", serverIds)
+      .lte("rank", 10);
+    topRankYears = (yr ?? []).reduce<Record<string, number>>((acc, r) => {
+      acc[r.server_id] = (acc[r.server_id] ?? 0) + 1; return acc;
+    }, {});
+  }
+
+  const withVotes = (servers ?? []).map((s) => ({
+    ...s,
+    votes: voteCounts[s.id] ?? 0,
+    top_rank_years: topRankYears[s.id] ?? 0,
+  }));
 
   // Current season rankings (by votes desc)
   const ranked = [...withVotes].sort((a, b) => b.votes - a.votes).slice(0, 10);
 
-  // Most trusted: by years listed desc, then votes
+  // Most trusted: blended score of age + top-rank finishes
   const trusted = [...withVotes]
-    .map((s) => ({ ...s, ageMs: Date.now() - new Date(s.first_seen_at).getTime() }))
-    .sort((a, b) => b.ageMs - a.ageMs || b.votes - a.votes)
+    .map((s) => {
+      const yrs = (Date.now() - new Date(s.first_seen_at).getTime()) / (365.25 * 24 * 3600 * 1000);
+      return { ...s, _trust: yrs + s.top_rank_years * 1.5 };
+    })
+    .sort((a, b) => b._trust - a._trust || b.votes - a.votes)
     .slice(0, 5);
 
   // Sponsored new (paid promotions, type sponsored_new)
@@ -195,13 +215,23 @@ export const createServer = createServerFn({ method: "POST" })
   .inputValidator((d) => createServerSchema.parse(d))
   .handler(async ({ data, context }) => {
     const url = new URL(data.website_url);
+    const domain = url.hostname.replace(/^www\./, "").toLowerCase();
+
+    // Conflict rule: name or domain may not match any active server
+    const [nameClash, domainClash] = await Promise.all([
+      context.supabase.rpc("is_identifier_taken" as never, { _identifier: data.current_name, _exclude_server: null } as never),
+      context.supabase.rpc("is_identifier_taken" as never, { _identifier: domain, _exclude_server: null } as never),
+    ]);
+    if (nameClash.data) throw new Error(`Server name "${data.current_name}" is already in use by an active server.`);
+    if (domainClash.data) throw new Error(`Domain "${domain}" is already in use by an active server.`);
+
     const { data: row, error } = await context.supabase
       .from("servers")
       .insert({
         owner_id: context.userId,
         current_name: data.current_name,
         website_url: data.website_url,
-        domain: url.hostname.replace(/^www\./, ""),
+        domain,
         chronicle: data.chronicle,
         rates: data.rates,
         description: data.description,
@@ -267,23 +297,37 @@ export const updateServer = createServerFn({ method: "POST" })
     if (existing.owner_id !== context.userId) throw new Error("Forbidden");
 
     const newUrl = new URL(data.website_url);
-    const newDomain = newUrl.hostname.replace(/^www\./, "");
+    const newDomain = newUrl.hostname.replace(/^www\./, "").toLowerCase();
 
-    // Track name change (1 free per year then admin approval — MVP: log and allow for owner)
+    // Track name change — 1 free per year, additional renames flagged as paid
+    let renameIsPaid = false;
     if (existing.current_name !== data.current_name) {
+      // Conflict check
+      const { data: clash } = await context.supabase.rpc(
+        "is_identifier_taken" as never,
+        { _identifier: data.current_name, _exclude_server: data.id } as never,
+      );
+      if (clash) throw new Error(`Server name "${data.current_name}" is already in use by another active server.`);
+
       const yearAgo = new Date(); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
       const { data: prevChanges } = await context.supabase
         .from("server_name_history").select("id")
         .eq("server_id", data.id).gte("changed_at", yearAgo.toISOString());
-      if ((prevChanges?.length ?? 0) >= 1) {
-        throw new Error("Name change limit reached for this year. Contact an admin to request another change.");
-      }
+      renameIsPaid = (prevChanges?.length ?? 0) >= 1;
       await context.supabase.from("server_name_history").insert({
-        server_id: data.id, old_name: existing.current_name, new_name: data.current_name,
+        server_id: data.id,
+        old_name: existing.current_name,
+        new_name: data.current_name,
+        is_paid: renameIsPaid,
       });
     }
-    // Track domain change (unrestricted)
+    // Track domain change
     if (existing.domain !== newDomain) {
+      const { data: clash } = await context.supabase.rpc(
+        "is_identifier_taken" as never,
+        { _identifier: newDomain, _exclude_server: data.id } as never,
+      );
+      if (clash) throw new Error(`Domain "${newDomain}" is already in use by another active server.`);
       await context.supabase.from("server_domain_history").insert({
         server_id: data.id, old_domain: existing.domain, new_domain: newDomain,
       });

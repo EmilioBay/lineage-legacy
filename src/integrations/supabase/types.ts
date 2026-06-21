@@ -91,6 +91,7 @@ export type Database = {
         Row: {
           changed_at: string
           id: string
+          is_paid: boolean
           new_name: string
           old_name: string
           server_id: string
@@ -98,6 +99,7 @@ export type Database = {
         Insert: {
           changed_at?: string
           id?: string
+          is_paid?: boolean
           new_name: string
           old_name: string
           server_id: string
@@ -105,6 +107,7 @@ export type Database = {
         Update: {
           changed_at?: string
           id?: string
+          is_paid?: boolean
           new_name?: string
           old_name?: string
           server_id?: string
@@ -306,6 +309,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_identifier_taken: {
+        Args: { _exclude_server: string; _identifier: string }
         Returns: boolean
       }
     }

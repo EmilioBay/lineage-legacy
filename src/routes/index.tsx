@@ -142,14 +142,17 @@ function Home() {
                   <p className="p-4 text-xs text-muted-foreground">Trust builds over time. No veterans listed yet.</p>
                 )}
                 {data?.trusted.map((s) => {
-                  const t = getTrustBadge(s.first_seen_at);
+                  const t = getTrustBadge({ firstSeenAt: s.first_seen_at, topRankYears: s.top_rank_years });
                   return (
                     <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="p-4 flex items-center justify-between group">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className={`size-8 rounded-full grid place-items-center text-[10px] font-bold border ${badgeClasses(t.badge)}`}>{t.years || "<1"}Y</div>
+                        <div className={`size-10 rounded-full grid place-items-center text-[10px] font-bold border ${badgeClasses(t.badge)}`}>{t.years || "<1"}Y</div>
                         <div className="min-w-0">
                           <p className="text-sm font-bold text-white group-hover:text-brand transition-colors truncate">{s.current_name}</p>
-                          <p className="text-[10px] text-muted-foreground">Listed {new Date(s.first_seen_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}</p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Listed {new Date(s.first_seen_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                            {t.topRankYears > 0 && <span className="text-accent"> · {t.topRankYears}× top 10</span>}
+                          </p>
                         </div>
                       </div>
                       <span className={`text-[10px] uppercase font-semibold ${t.badge === "legendary" ? "text-accent" : "text-muted-foreground"}`}>{t.label}</span>
