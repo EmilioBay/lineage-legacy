@@ -1,14 +1,43 @@
 export type TrustBadge = "new" | "established" | "veteran" | "legendary";
 
-export function getTrustBadge(firstSeenAt: string | Date): { badge: TrustBadge; label: string; years: number } {
+export interface TrustInput {
+  firstSeenAt: string | Date;
+  /** Number of years the server placed in the yearly top 10. */
+  topRankYears?: number;
+}
+
+/**
+ * Trust badge logic — combines age (first_seen_at) with ranking
+ * consistency (top-10 yearly finishes). A server can climb tiers faster
+ * by ranking well, but cannot skip the "new" stage in its first months.
+ */
+export function getTrustBadge(input: string | Date | TrustInput): {
+  badge: TrustBadge;
+  label: string;
+  years: number;
+  topRankYears: number;
+} {
+  const { firstSeenAt, topRankYears = 0 } =
+    typeof input === "string" || input instanceof Date
+      ? { firstSeenAt: input, topRankYears: 0 }
+      : input;
+
   const first = new Date(firstSeenAt);
   const now = new Date();
-  const months = (now.getFullYear() - first.getFullYear()) * 12 + (now.getMonth() - first.getMonth());
+  const months =
+    (now.getFullYear() - first.getFullYear()) * 12 +
+    (now.getMonth() - first.getMonth());
   const years = Math.floor(months / 12);
-  if (months >= 36) return { badge: "legendary", label: "Legendary", years };
-  if (months >= 24) return { badge: "veteran", label: "Veteran", years };
-  if (months >= 6) return { badge: "established", label: "Established", years };
-  return { badge: "new", label: "New", years };
+
+  // Score: 1 point per year listed + 1.5 per top-10 finish
+  const score = years + topRankYears * 1.5;
+
+  if (months < 6) return { badge: "new", label: "New", years, topRankYears };
+  if (score >= 4 || topRankYears >= 2)
+    return { badge: "legendary", label: "Legendary", years, topRankYears };
+  if (score >= 2.5 || months >= 24)
+    return { badge: "veteran", label: "Veteran", years, topRankYears };
+  return { badge: "established", label: "Established", years, topRankYears };
 }
 
 export function badgeClasses(badge: TrustBadge) {
