@@ -13,6 +13,18 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
   component: Dashboard,
 });
 
+type EditFormData = {
+  current_name: string;
+  website_url: string;
+  chronicle: string;
+  rates: string;
+  description: string;
+  logo_url: string;
+  discord_url: string;
+  country: string;
+  banner_url: string;
+};
+
 function Dashboard() {
   const fetchMy = useServerFn(getMyServers);
   const update = useServerFn(updateServer);
@@ -22,11 +34,10 @@ function Dashboard() {
   const { data: adminCheck } = useQuery({ queryKey: ["is-admin"], queryFn: () => checkAdmin({ data: undefined as never }) });
 
   const [editingId, setEditingId] = useState<string | null>(null);
-
   const editing = servers?.find((s) => s.id === editingId);
 
   const mutation = useMutation({
-    mutationFn: async (form: Parameters<typeof update>[0]["data"]) => update({ data: form }),
+    mutationFn: async (vars: EditFormData & { id: string }) => update({ data: vars }),
     onSuccess: () => { toast.success("Server updated."); setEditingId(null); refetch(); },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -35,7 +46,7 @@ function Dashboard() {
     <div className="min-h-screen bg-background">
       <Header />
       <main className="max-w-5xl mx-auto px-6 py-12">
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-8 flex-wrap gap-4">
           <div>
             <h1 className="text-3xl font-extrabold text-white tracking-tight">Owner Dashboard</h1>
             <p className="text-muted-foreground text-sm mt-1">Manage your servers, view votes, edit info.</p>
@@ -58,7 +69,7 @@ function Dashboard() {
         <div className="space-y-4">
           {servers?.map((s) => (
             <div key={s.id} className="bg-surface border border-border rounded-xl p-5">
-              <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-lg font-bold text-white">{s.current_name}</h3>
@@ -76,7 +87,21 @@ function Dashboard() {
               </div>
 
               {editingId === s.id && editing && (
-                <EditForm initial={editing} onSubmit={(form) => mutation.mutate({ id: s.id, ...form })} loading={mutation.isPending} />
+                <EditForm
+                  initial={{
+                    current_name: editing.current_name,
+                    website_url: editing.website_url,
+                    chronicle: editing.chronicle,
+                    rates: editing.rates,
+                    description: editing.description,
+                    logo_url: editing.logo_url ?? "",
+                    discord_url: editing.discord_url ?? "",
+                    country: editing.country ?? "",
+                    banner_url: editing.banner_url ?? "",
+                  }}
+                  onSubmit={(form) => mutation.mutate({ id: s.id, ...form })}
+                  loading={mutation.isPending}
+                />
               )}
             </div>
           ))}
@@ -87,19 +112,9 @@ function Dashboard() {
   );
 }
 
-function EditForm({ initial, onSubmit, loading }: { initial: NonNullable<ReturnType<typeof useFormState>>; onSubmit: (f: ReturnType<typeof useFormState>) => void; loading: boolean }) {
-  const [form, setForm] = useState({
-    current_name: initial.current_name,
-    website_url: initial.website_url,
-    chronicle: initial.chronicle,
-    rates: initial.rates,
-    description: initial.description,
-    logo_url: initial.logo_url ?? "",
-    discord_url: initial.discord_url ?? "",
-    country: initial.country ?? "",
-    banner_url: initial.banner_url ?? "",
-  });
-  function set<K extends keyof typeof form>(k: K, v: string) { setForm((f) => ({ ...f, [k]: v })); }
+function EditForm({ initial, onSubmit, loading }: { initial: EditFormData; onSubmit: (f: EditFormData) => void; loading: boolean }) {
+  const [form, setForm] = useState<EditFormData>(initial);
+  function set<K extends keyof EditFormData>(k: K, v: string) { setForm((f) => ({ ...f, [k]: v })); }
   const inp = "w-full bg-background border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-brand";
   return (
     <form onSubmit={(e) => { e.preventDefault(); onSubmit(form); }} className="mt-5 pt-5 border-t border-border space-y-3">
@@ -121,6 +136,3 @@ function EditForm({ initial, onSubmit, loading }: { initial: NonNullable<ReturnT
     </form>
   );
 }
-
-// helper type only
-function useFormState() { return null as unknown as { current_name: string; website_url: string; chronicle: string; rates: string; description: string; logo_url: string | null; discord_url: string | null; country: string | null; banner_url: string | null }; }
