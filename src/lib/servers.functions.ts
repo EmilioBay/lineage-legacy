@@ -277,23 +277,37 @@ export const updateServer = createServerFn({ method: "POST" })
     if (existing.owner_id !== context.userId) throw new Error("Forbidden");
 
     const newUrl = new URL(data.website_url);
-    const newDomain = newUrl.hostname.replace(/^www\./, "");
+    const newDomain = newUrl.hostname.replace(/^www\./, "").toLowerCase();
 
-    // Track name change (1 free per year then admin approval — MVP: log and allow for owner)
+    // Track name change — 1 free per year, additional renames flagged as paid
+    let renameIsPaid = false;
     if (existing.current_name !== data.current_name) {
+      // Conflict check
+      const { data: clash } = await context.supabase.rpc(
+        "is_identifier_taken" as never,
+        { _identifier: data.current_name, _exclude_server: data.id } as never,
+      );
+      if (clash) throw new Error(`Server name "${data.current_name}" is already in use by another active server.`);
+
       const yearAgo = new Date(); yearAgo.setFullYear(yearAgo.getFullYear() - 1);
       const { data: prevChanges } = await context.supabase
         .from("server_name_history").select("id")
         .eq("server_id", data.id).gte("changed_at", yearAgo.toISOString());
-      if ((prevChanges?.length ?? 0) >= 1) {
-        throw new Error("Name change limit reached for this year. Contact an admin to request another change.");
-      }
+      renameIsPaid = (prevChanges?.length ?? 0) >= 1;
       await context.supabase.from("server_name_history").insert({
-        server_id: data.id, old_name: existing.current_name, new_name: data.current_name,
+        server_id: data.id,
+        old_name: existing.current_name,
+        new_name: data.current_name,
+        is_paid: renameIsPaid,
       });
     }
-    // Track domain change (unrestricted)
+    // Track domain change
     if (existing.domain !== newDomain) {
+      const { data: clash } = await context.supabase.rpc(
+        "is_identifier_taken" as never,
+        { _identifier: newDomain, _exclude_server: data.id } as never,
+      );
+      if (clash) throw new Error(`Domain "${newDomain}" is already in use by another active server.`);
       await context.supabase.from("server_domain_history").insert({
         server_id: data.id, old_domain: existing.domain, new_domain: newDomain,
       });
