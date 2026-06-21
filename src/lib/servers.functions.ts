@@ -195,13 +195,23 @@ export const createServer = createServerFn({ method: "POST" })
   .inputValidator((d) => createServerSchema.parse(d))
   .handler(async ({ data, context }) => {
     const url = new URL(data.website_url);
+    const domain = url.hostname.replace(/^www\./, "").toLowerCase();
+
+    // Conflict rule: name or domain may not match any active server
+    const [nameClash, domainClash] = await Promise.all([
+      context.supabase.rpc("is_identifier_taken" as never, { _identifier: data.current_name, _exclude_server: null } as never),
+      context.supabase.rpc("is_identifier_taken" as never, { _identifier: domain, _exclude_server: null } as never),
+    ]);
+    if (nameClash.data) throw new Error(`Server name "${data.current_name}" is already in use by an active server.`);
+    if (domainClash.data) throw new Error(`Domain "${domain}" is already in use by an active server.`);
+
     const { data: row, error } = await context.supabase
       .from("servers")
       .insert({
         owner_id: context.userId,
         current_name: data.current_name,
         website_url: data.website_url,
-        domain: url.hostname.replace(/^www\./, ""),
+        domain,
         chronicle: data.chronicle,
         rates: data.rates,
         description: data.description,
