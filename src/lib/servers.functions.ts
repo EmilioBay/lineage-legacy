@@ -38,15 +38,35 @@ export const getHomepageData = createServerFn({ method: "GET" }).handler(async (
     }, {});
   }
 
-  const withVotes = (servers ?? []).map((s) => ({ ...s, votes: voteCounts[s.id] ?? 0 }));
+  // Top-10 yearly finishes per server (ranking consistency for trust)
+  let topRankYears: Record<string, number> = {};
+  if (serverIds.length > 0) {
+    const { data: yr } = await sb
+      .from("yearly_rankings")
+      .select("server_id, rank")
+      .in("server_id", serverIds)
+      .lte("rank", 10);
+    topRankYears = (yr ?? []).reduce<Record<string, number>>((acc, r) => {
+      acc[r.server_id] = (acc[r.server_id] ?? 0) + 1; return acc;
+    }, {});
+  }
+
+  const withVotes = (servers ?? []).map((s) => ({
+    ...s,
+    votes: voteCounts[s.id] ?? 0,
+    top_rank_years: topRankYears[s.id] ?? 0,
+  }));
 
   // Current season rankings (by votes desc)
   const ranked = [...withVotes].sort((a, b) => b.votes - a.votes).slice(0, 10);
 
-  // Most trusted: by years listed desc, then votes
+  // Most trusted: blended score of age + top-rank finishes
   const trusted = [...withVotes]
-    .map((s) => ({ ...s, ageMs: Date.now() - new Date(s.first_seen_at).getTime() }))
-    .sort((a, b) => b.ageMs - a.ageMs || b.votes - a.votes)
+    .map((s) => {
+      const yrs = (Date.now() - new Date(s.first_seen_at).getTime()) / (365.25 * 24 * 3600 * 1000);
+      return { ...s, _trust: yrs + s.top_rank_years * 1.5 };
+    })
+    .sort((a, b) => b._trust - a._trust || b.votes - a.votes)
     .slice(0, 5);
 
   // Sponsored new (paid promotions, type sponsored_new)
