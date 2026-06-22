@@ -166,9 +166,11 @@ export type Database = {
           domain: string
           first_seen_at: string
           id: string
+          launch_date: string | null
           logo_url: string | null
           owner_id: string | null
           rates: string
+          server_type: string | null
           status: Database["public"]["Enums"]["server_status"]
           updated_at: string
           website_url: string
@@ -184,9 +186,11 @@ export type Database = {
           domain: string
           first_seen_at?: string
           id?: string
+          launch_date?: string | null
           logo_url?: string | null
           owner_id?: string | null
           rates: string
+          server_type?: string | null
           status?: Database["public"]["Enums"]["server_status"]
           updated_at?: string
           website_url: string
@@ -202,9 +206,11 @@ export type Database = {
           domain?: string
           first_seen_at?: string
           id?: string
+          launch_date?: string | null
           logo_url?: string | null
           owner_id?: string | null
           rates?: string
+          server_type?: string | null
           status?: Database["public"]["Enums"]["server_status"]
           updated_at?: string
           website_url?: string
