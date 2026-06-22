@@ -53,7 +53,7 @@ function Home() {
       {/* Hero */}
       <header className="py-16 px-6 max-w-7xl mx-auto text-center">
         <h1 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4">
-          Find Trusted <span className="text-brand">Lineage 2</span> Servers
+          Find <span className="text-brand">Trusted</span> Lineage 2 Servers
         </h1>
         <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
           The only Lineage 2 directory that preserves server history. No resets, no hidden rebrands — just transparent performance data over time.
