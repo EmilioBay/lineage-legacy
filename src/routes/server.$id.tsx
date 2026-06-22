@@ -115,6 +115,8 @@ function ServerPage() {
                 <p className="text-[11px] text-muted-foreground">You can vote now</p>
               )}
             </div>
+          </div>
+
 
           <section>
             <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-3">About</h2>
