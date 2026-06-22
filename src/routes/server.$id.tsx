@@ -36,6 +36,7 @@ function ServerPage() {
   const { id } = Route.useParams();
   const fetch = useServerFn(getServerDetail);
   const vote = useServerFn(castVote);
+  const cooldownFn = useServerFn(getVoteCooldown);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["server", id],
@@ -46,10 +47,16 @@ function ServerPage() {
     },
   });
 
+  const { data: cooldown, refetch: refetchCooldown } = useQuery({
+    queryKey: ["vote-cooldown", id],
+    queryFn: () => cooldownFn({ data: { server_id: id } }),
+    refetchInterval: 60_000,
+  });
+
   const mutation = useMutation({
     mutationFn: async () => vote({ data: { server_id: id, fingerprint: getFingerprint() } }),
-    onSuccess: () => { toast.success("Vote counted."); refetch(); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("Vote counted."); refetch(); refetchCooldown(); },
+    onError: (e: Error) => { toast.error(e.message); refetchCooldown(); },
   });
 
   if (isLoading || !data) {
