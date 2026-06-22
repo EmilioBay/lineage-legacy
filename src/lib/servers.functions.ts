@@ -197,13 +197,32 @@ export const listServers = createServerFn({ method: "GET" })
       .sort((a, b) => b.votes - a.votes);
   });
 
+// ----- Public: check name / domain availability -----
+export const checkIdentifierAvailability = createServerFn({ method: "GET" })
+  .inputValidator((d) => z.object({ identifier: z.string().trim().min(1).max(255) }).parse(d))
+  .handler(async ({ data }) => {
+    const sb = publicClient();
+    const ident = data.identifier.toLowerCase();
+    const { data: rows } = await sb
+      .from("servers")
+      .select("id, current_name, domain, status")
+      .in("status", ["approved", "pending"])
+      .or(`current_name.ilike.${ident},domain.ilike.${ident}`);
+    const taken = (rows ?? []).some(
+      (r) => r.current_name?.toLowerCase() === ident || r.domain?.toLowerCase() === ident,
+    );
+    return { available: !taken };
+  });
+
 // ----- Owner: create server -----
 const createServerSchema = z.object({
   current_name: z.string().trim().min(2).max(80),
   website_url: z.string().trim().url().max(255),
   chronicle: z.string().trim().min(1).max(40),
-  rates: z.string().trim().min(1).max(40),
-  description: z.string().trim().min(10).max(2000),
+  rates: z.coerce.number().int().min(1).max(999999),
+  server_type: z.string().trim().min(1).max(40),
+  launch_date: z.string().trim().optional().or(z.literal("")),
+  description: z.string().trim().min(100).max(2000),
   logo_url: z.string().trim().url().max(500).optional().or(z.literal("")),
   discord_url: z.string().trim().url().max(255).optional().or(z.literal("")),
   country: z.string().trim().max(60).optional().or(z.literal("")),
@@ -233,7 +252,9 @@ export const createServer = createServerFn({ method: "POST" })
         website_url: data.website_url,
         domain,
         chronicle: data.chronicle,
-        rates: data.rates,
+        rates: String(data.rates),
+        server_type: data.server_type,
+        launch_date: data.launch_date || null,
         description: data.description,
         logo_url: data.logo_url || null,
         discord_url: data.discord_url || null,
