@@ -7,7 +7,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { getServerDetail } from "@/lib/servers.functions";
-import { castVote } from "@/lib/voting.functions";
+import { castVote, getVoteCooldown } from "@/lib/voting.functions";
 import { getFingerprint } from "@/lib/fingerprint";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 
