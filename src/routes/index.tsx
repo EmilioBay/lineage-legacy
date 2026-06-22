@@ -103,26 +103,47 @@ function Home() {
           </div>
         )}
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left: Current Season Rankings */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                Current Season Rankings
+        {/* Why L2Index? */}
+        <section className="mb-16">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
+            <p className="text-muted-foreground mt-2">Built on transparency, audited by history.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-4">
+            {[
+              { t: "Permanent History", d: "Every server name, domain, and ranking is preserved forever. No silent rebrands, no deleted past." },
+              { t: "Verified Trust Badges", d: "Servers earn New, Established, Veteran, and Legendary status based on real listing age and ranking consistency." },
+              { t: "Fair Voting", d: "One vote per IP every 12 hours. No bot farms, no inflated numbers — just real player support." },
+            ].map((f) => (
+              <div key={f.t} className="bg-surface border border-border rounded-xl p-6">
+                <div className="size-10 rounded-lg bg-brand/10 border border-brand/20 grid place-items-center text-brand font-bold mb-3">✓</div>
+                <h3 className="text-white font-bold mb-2">{f.t}</h3>
+                <p className="text-sm text-muted-foreground">{f.d}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Current Season Rankings */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                Current Season
                 <span className="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded border border-brand/20 uppercase font-mono">{new Date().getFullYear()}</span>
               </h2>
-              <Link to="/browse" className="text-sm text-brand hover:underline">View All</Link>
+              <Link to="/browse" className="text-xs text-brand hover:underline">View All</Link>
             </div>
 
             {isLoading && <p className="text-muted-foreground text-sm">Loading rankings…</p>}
             {!isLoading && data?.ranked.length === 0 && (
-              <div className="text-center py-16 border border-dashed border-border rounded-xl">
-                <p className="text-muted-foreground">No approved servers yet.</p>
-                <Link to="/add-server" className="inline-block mt-4 bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold">Be the first to add one</Link>
+              <div className="text-center py-12 border border-dashed border-border rounded-xl">
+                <p className="text-muted-foreground text-sm">No approved servers yet.</p>
+                <Link to="/add-server" className="inline-block mt-3 bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold">Be the first</Link>
               </div>
             )}
 
-            {data?.ranked.map((s, i) => (
+            {data?.ranked.slice(0, 8).map((s, i) => (
               <ServerRow
                 key={s.id}
                 rank={i + 1}
@@ -131,67 +152,72 @@ function Home() {
                 voting={mutation.isPending && mutation.variables === s.id}
               />
             ))}
-          </div>
+          </section>
 
-          {/* Right: Most Trusted + New */}
-          <div className="space-y-8">
-            <section>
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4">Most Trusted</h2>
-              <div className="bg-surface border border-border rounded-xl divide-y divide-border">
-                {(data?.trusted ?? []).length === 0 && (
-                  <p className="p-4 text-xs text-muted-foreground">Trust builds over time. No veterans listed yet.</p>
-                )}
-                {data?.trusted.map((s) => {
-                  const t = getTrustBadge({ firstSeenAt: s.first_seen_at, topRankYears: s.top_rank_years });
-                  return (
-                    <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="p-4 flex items-center justify-between group">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`size-10 rounded-full grid place-items-center text-[10px] font-bold border ${badgeClasses(t.badge)}`}>{t.years || "<1"}Y</div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-white group-hover:text-brand transition-colors truncate">{s.current_name}</p>
-                          <p className="text-[10px] text-muted-foreground">
-                            Listed {new Date(s.first_seen_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
-                            {t.topRankYears > 0 && <span className="text-accent"> · {t.topRankYears}× top 10</span>}
-                          </p>
-                        </div>
+          {/* Most Trusted (center) */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white">Most Trusted</h2>
+              <Link to="/browse" className="text-xs text-brand hover:underline">View All</Link>
+            </div>
+            <div className="bg-surface border border-border rounded-xl divide-y divide-border">
+              {(data?.trusted ?? []).length === 0 && (
+                <p className="p-4 text-xs text-muted-foreground">Trust builds over time. No veterans listed yet.</p>
+              )}
+              {data?.trusted.map((s) => {
+                const t = getTrustBadge({ firstSeenAt: s.first_seen_at, topRankYears: s.top_rank_years });
+                return (
+                  <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="p-4 flex items-center justify-between group">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`size-10 rounded-full grid place-items-center text-[10px] font-bold border ${badgeClasses(t.badge)}`}>{t.years || "<1"}Y</div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-bold text-white group-hover:text-brand transition-colors truncate">{s.current_name}</p>
+                        <p className="text-[10px] text-muted-foreground">
+                          Listed {new Date(s.first_seen_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                          {t.topRankYears > 0 && <span className="text-accent"> · {t.topRankYears}× top 10</span>}
+                        </p>
                       </div>
-                      <span className={`text-[10px] uppercase font-semibold ${t.badge === "legendary" ? "text-accent" : "text-muted-foreground"}`}>{t.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
-            </section>
+                    </div>
+                    <span className={`text-[10px] uppercase font-semibold ${t.badge === "legendary" ? "text-accent" : "text-muted-foreground"}`}>{t.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </section>
 
-            <section>
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] mb-4">New Servers</h2>
-              <div className="space-y-3">
-                {data?.sponsoredNew.map((s) => (
-                  <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="block bg-surface border border-border rounded-xl p-4 hover:border-brand/30 transition">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-[9px] font-bold bg-brand text-brand-foreground px-2 py-0.5 rounded uppercase">Sponsored</span>
-                      <span className="text-[10px] font-mono text-accent">x{s.rates.replace(/^x/i, "")}</span>
-                    </div>
-                    <h4 className="text-white font-bold">{s.current_name}</h4>
-                    <p className="text-xs text-muted-foreground mt-1 truncate">{s.chronicle} · {s.description.slice(0, 60)}</p>
-                  </Link>
-                ))}
-                {data?.organicNew.map((s) => (
-                  <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="bg-surface/50 border border-border rounded-xl p-3 flex items-center gap-3 hover:bg-surface transition">
-                    <div className="size-10 bg-background rounded border border-border overflow-hidden grid place-items-center">
-                      {s.logo_url ? <img src={s.logo_url} alt="" className="size-full object-cover" /> : <span className="text-[10px] text-muted-foreground">{s.current_name.slice(0,2)}</span>}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-xs font-bold text-white truncate">{s.current_name}</p>
-                      <p className="text-[9px] text-muted-foreground">{s.chronicle} · Added {new Date(s.first_seen_at).toLocaleDateString()}</p>
-                    </div>
-                  </Link>
-                ))}
-                {data && data.sponsoredNew.length === 0 && data.organicNew.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No new servers yet.</p>
-                )}
-              </div>
-            </section>
-          </div>
+          {/* New Servers */}
+          <section className="space-y-3">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-white">New Servers</h2>
+              <Link to="/browse" className="text-xs text-brand hover:underline">View All</Link>
+            </div>
+            <div className="space-y-3">
+              {data?.sponsoredNew.map((s) => (
+                <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="block bg-surface border border-border rounded-xl p-4 hover:border-brand/30 transition">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-[9px] font-bold bg-brand text-brand-foreground px-2 py-0.5 rounded uppercase">Sponsored</span>
+                    <span className="text-[10px] font-mono text-accent">x{s.rates.replace(/^x/i, "")}</span>
+                  </div>
+                  <h4 className="text-white font-bold">{s.current_name}</h4>
+                  <p className="text-xs text-muted-foreground mt-1 truncate">{s.chronicle} · {s.description.slice(0, 60)}</p>
+                </Link>
+              ))}
+              {data?.organicNew.map((s) => (
+                <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="bg-surface/50 border border-border rounded-xl p-3 flex items-center gap-3 hover:bg-surface transition">
+                  <div className="size-10 bg-background rounded border border-border overflow-hidden grid place-items-center">
+                    {s.logo_url ? <img src={s.logo_url} alt="" className="size-full object-cover" /> : <span className="text-[10px] text-muted-foreground">{s.current_name.slice(0,2)}</span>}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-bold text-white truncate">{s.current_name}</p>
+                    <p className="text-[9px] text-muted-foreground">{s.chronicle} · Added {new Date(s.first_seen_at).toLocaleDateString()}</p>
+                  </div>
+                </Link>
+              ))}
+              {data && data.sponsoredNew.length === 0 && data.organicNew.length === 0 && (
+                <p className="text-xs text-muted-foreground">No new servers yet.</p>
+              )}
+            </div>
+          </section>
         </div>
       </main>
 
