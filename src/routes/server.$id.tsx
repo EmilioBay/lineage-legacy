@@ -7,7 +7,7 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { getServerDetail } from "@/lib/servers.functions";
-import { castVote } from "@/lib/voting.functions";
+import { castVote, getVoteCooldown } from "@/lib/voting.functions";
 import { getFingerprint } from "@/lib/fingerprint";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 
@@ -36,6 +36,7 @@ function ServerPage() {
   const { id } = Route.useParams();
   const fetch = useServerFn(getServerDetail);
   const vote = useServerFn(castVote);
+  const cooldownFn = useServerFn(getVoteCooldown);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["server", id],
@@ -46,10 +47,16 @@ function ServerPage() {
     },
   });
 
+  const { data: cooldown, refetch: refetchCooldown } = useQuery({
+    queryKey: ["vote-cooldown", id],
+    queryFn: () => cooldownFn({ data: { server_id: id } }),
+    refetchInterval: 60_000,
+  });
+
   const mutation = useMutation({
     mutationFn: async () => vote({ data: { server_id: id, fingerprint: getFingerprint() } }),
-    onSuccess: () => { toast.success("Vote counted."); refetch(); },
-    onError: (e: Error) => toast.error(e.message),
+    onSuccess: () => { toast.success("Vote counted."); refetch(); refetchCooldown(); },
+    onError: (e: Error) => { toast.error(e.message); refetchCooldown(); },
   });
 
   if (isLoading || !data) {
@@ -97,10 +104,19 @@ function ServerPage() {
                 {server.discord_url && <a href={server.discord_url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-white">Discord</a>}
               </div>
             </div>
-            <button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold hover:opacity-90 disabled:opacity-50">
-              {mutation.isPending ? "..." : "VOTE"}
-            </button>
+            <div className="flex flex-col items-end gap-1">
+              <button onClick={() => mutation.mutate()} disabled={mutation.isPending || cooldown?.can_vote === false} className="bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold hover:opacity-90 disabled:opacity-50">
+                {mutation.isPending ? "..." : "VOTE"}
+              </button>
+              {cooldown?.can_vote === false && cooldown.next_vote_at && (
+                <p className="text-[11px] text-muted-foreground">Next vote: {new Date(cooldown.next_vote_at).toLocaleString()}</p>
+              )}
+              {cooldown?.can_vote === true && (
+                <p className="text-[11px] text-muted-foreground">You can vote now</p>
+              )}
+            </div>
           </div>
+
 
           <section>
             <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-3">About</h2>
