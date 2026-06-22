@@ -31,6 +31,8 @@ export function Header() {
           <div className="hidden md:flex items-center gap-6 text-sm font-medium text-muted-foreground">
             <Link to="/" activeProps={{ className: "text-white" }} activeOptions={{ exact: true }} className="hover:text-white transition-colors">Rankings</Link>
             <Link to="/browse" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">Browse</Link>
+            <Link to="/about" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">About Us</Link>
+            <Link to="/contact" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">Contact Us</Link>
             {user && (
               <Link to="/dashboard" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">Dashboard</Link>
             )}
