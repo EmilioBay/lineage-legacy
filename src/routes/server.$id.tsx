@@ -104,10 +104,17 @@ function ServerPage() {
                 {server.discord_url && <a href={server.discord_url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-white">Discord</a>}
               </div>
             </div>
-            <button onClick={() => mutation.mutate()} disabled={mutation.isPending} className="bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold hover:opacity-90 disabled:opacity-50">
-              {mutation.isPending ? "..." : "VOTE"}
-            </button>
-          </div>
+            <div className="flex flex-col items-end gap-1">
+              <button onClick={() => mutation.mutate()} disabled={mutation.isPending || cooldown?.can_vote === false} className="bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold hover:opacity-90 disabled:opacity-50">
+                {mutation.isPending ? "..." : "VOTE"}
+              </button>
+              {cooldown?.can_vote === false && cooldown.next_vote_at && (
+                <p className="text-[11px] text-muted-foreground">Next vote: {new Date(cooldown.next_vote_at).toLocaleString()}</p>
+              )}
+              {cooldown?.can_vote === true && (
+                <p className="text-[11px] text-muted-foreground">You can vote now</p>
+              )}
+            </div>
 
           <section>
             <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-3">About</h2>
