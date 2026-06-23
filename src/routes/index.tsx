@@ -139,8 +139,6 @@ function Home() {
                 key={s.id}
                 rank={i + 1}
                 server={s}
-                onVote={(id) => mutation.mutate(id)}
-                voting={mutation.isPending && mutation.variables === s.id}
               />
             ))}
           </section>
