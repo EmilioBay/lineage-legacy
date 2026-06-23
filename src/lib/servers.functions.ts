@@ -392,6 +392,33 @@ export const adminSetServerStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminGetServerDetail = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role" as never, { _user_id: context.userId, _role: "admin" } as never);
+    if (!isAdmin) throw new Error("Forbidden");
+
+    const { data: server } = await context.supabase.from("servers").select("*").eq("id", data.id).maybeSingle();
+    if (!server) return null;
+
+    const [{ data: nameHistory }, { data: domainHistory }, { data: yearly }, { data: stats }] = await Promise.all([
+      context.supabase.from("server_name_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
+      context.supabase.from("server_domain_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
+      context.supabase.from("yearly_rankings").select("*").eq("server_id", data.id).order("year", { ascending: false }).limit(5),
+      context.supabase.from("server_stats").select("date, rank, votes").eq("server_id", data.id).order("date"),
+    ]);
+
+    return {
+      server,
+      nameHistory: nameHistory ?? [],
+      domainHistory: domainHistory ?? [],
+      yearly: yearly ?? [],
+      stats: stats ?? [],
+      currentSeasonVotes: 0,
+    };
+  });
+
 export const checkIsAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
