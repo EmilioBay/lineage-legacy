@@ -26,7 +26,7 @@ function Home() {
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["homepage"],
     queryFn: () => fetchHome({ data: undefined as never }),
   });
