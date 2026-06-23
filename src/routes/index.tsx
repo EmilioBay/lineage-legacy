@@ -1,15 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { toast } from "sonner";
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { ServerRow } from "@/components/site/ServerRow";
 import { getHomepageData } from "@/lib/servers.functions";
-import { castVote } from "@/lib/voting.functions";
-import { getFingerprint } from "@/lib/fingerprint";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 
 export const Route = createFileRoute("/")({
@@ -26,25 +23,19 @@ export const Route = createFileRoute("/")({
 
 function Home() {
   const fetchHome = useServerFn(getHomepageData);
-  const vote = useServerFn(castVote);
   const navigate = useNavigate();
   const [search, setSearch] = useState("");
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ["homepage"],
     queryFn: () => fetchHome({ data: undefined as never }),
-  });
-
-  const mutation = useMutation({
-    mutationFn: async (server_id: string) => vote({ data: { server_id, fingerprint: getFingerprint() } }),
-    onSuccess: () => { toast.success("Vote counted. Thanks for supporting the server."); refetch(); },
-    onError: (e: Error) => toast.error(e.message),
   });
 
   function onSearch(e: React.FormEvent) {
     e.preventDefault();
     navigate({ to: "/browse", search: { q: search.trim() || undefined } });
   }
+
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -148,8 +139,6 @@ function Home() {
                 key={s.id}
                 rank={i + 1}
                 server={s}
-                onVote={(id) => mutation.mutate(id)}
-                voting={mutation.isPending && mutation.variables === s.id}
               />
             ))}
           </section>

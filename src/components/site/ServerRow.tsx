@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 
 interface Props {
@@ -14,19 +14,40 @@ interface Props {
     top_rank_years?: number;
     country?: string | null;
   };
-  onVote: (id: string) => void;
+  onVote?: (id: string) => void;
   voting?: boolean;
 }
 
 export function ServerRow({ rank, server, onVote, voting }: Props) {
+  const navigate = useNavigate();
   const trust = getTrustBadge({
     firstSeenAt: server.first_seen_at,
     topRankYears: server.top_rank_years ?? 0,
   });
   const isPodium = rank <= 3;
+
+  function openServer() {
+    navigate({ to: "/server/$id", params: { id: server.id } });
+  }
+
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl border transition-all flex flex-col sm:flex-row items-stretch sm:items-center gap-5 sm:gap-6 p-6 ${
+      role={onVote ? undefined : "button"}
+      tabIndex={onVote ? undefined : 0}
+      onClick={openServer}
+      onKeyDown={
+        onVote
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openServer();
+              }
+            }
+      }
+      className={`group relative overflow-hidden rounded-2xl border transition-all flex flex-col sm:flex-row items-stretch sm:items-center gap-5 sm:gap-6 p-6 cursor-pointer ${
+        onVote ? "" : "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      } ${
         isPodium
           ? "bg-gradient-to-r from-surface to-surface/40 border-brand/30 shadow-[0_0_0_1px_rgba(56,127,255,0.08)]"
           : "bg-surface border-border hover:border-brand/30"
@@ -44,11 +65,7 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
         {String(rank).padStart(2, "0")}
       </div>
 
-      <Link
-        to="/server/$id"
-        params={{ id: server.id }}
-        className="size-20 sm:size-24 rounded-xl bg-background border border-border flex-shrink-0 grid place-items-center overflow-hidden ring-1 ring-white/5"
-      >
+      <div className="size-14 sm:size-16 rounded-xl bg-background border border-border flex-shrink-0 grid place-items-center overflow-hidden ring-1 ring-white/5">
         {server.logo_url ? (
           <img
             src={server.logo_url}
@@ -61,17 +78,13 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
             {server.current_name.slice(0, 2).toUpperCase()}
           </span>
         )}
-      </Link>
+      </div>
 
       <div className="flex-1 min-w-0 py-1">
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Link
-            to="/server/$id"
-            params={{ id: server.id }}
-            className="text-2xl font-bold text-foreground hover:text-brand transition-colors truncate"
-          >
+          <span className="text-2xl font-bold tracking-tight text-foreground group-hover:text-brand transition-colors truncate">
             {server.current_name}
-          </Link>
+          </span>
           <span
             className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${badgeClasses(
               trust.badge,
@@ -108,13 +121,18 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
           </p>
         </div>
 
-        <button
-          disabled={voting}
-          onClick={() => onVote(server.id)}
-          className="bg-white/5 hover:bg-brand text-foreground border border-white/10 px-7 py-3 rounded-lg font-bold transition-colors text-sm disabled:opacity-50 shrink-0"
-        >
-          {voting ? "..." : "VOTE"}
-        </button>
+        {onVote && (
+          <button
+            disabled={voting}
+            onClick={(e) => {
+              e.stopPropagation();
+              onVote(server.id);
+            }}
+            className="bg-white/5 hover:bg-brand text-foreground border border-white/10 px-7 py-3 rounded-lg font-bold transition-colors text-sm disabled:opacity-50 shrink-0"
+          >
+            {voting ? "..." : "VOTE"}
+          </button>
+        )}
       </div>
     </div>
   );
