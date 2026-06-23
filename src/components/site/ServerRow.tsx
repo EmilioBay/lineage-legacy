@@ -26,7 +26,7 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
   const isPodium = rank <= 3;
   return (
     <div
-      className={`group relative overflow-hidden rounded-2xl border transition-all flex items-center gap-5 p-5 ${
+      className={`group relative overflow-hidden rounded-2xl border transition-all flex flex-col sm:flex-row items-stretch sm:items-center gap-5 sm:gap-6 p-6 ${
         isPodium
           ? "bg-gradient-to-r from-surface to-surface/40 border-brand/30 shadow-[0_0_0_1px_rgba(56,127,255,0.08)]"
           : "bg-surface border-border hover:border-brand/30"
@@ -63,12 +63,12 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
         )}
       </Link>
 
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
+      <div className="flex-1 min-w-0 py-1">
+        <div className="flex items-center gap-2.5 flex-wrap">
           <Link
             to="/server/$id"
             params={{ id: server.id }}
-            className="text-xl font-bold text-white hover:text-brand transition-colors truncate"
+            className="text-2xl font-bold text-foreground hover:text-brand transition-colors truncate"
           >
             {server.current_name}
           </Link>
@@ -80,11 +80,11 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
             {trust.label}
           </span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-2 flex-wrap">
-          <span className="font-mono bg-background border border-border px-2 py-0.5 rounded">
+        <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-muted-foreground">
+          <span className="font-mono bg-background/60 border border-border/70 px-2.5 py-1 rounded">
             {server.chronicle}
           </span>
-          <span className="font-mono bg-background border border-border px-2 py-0.5 rounded">
+          <span className="font-mono bg-background/60 border border-border/70 px-2.5 py-1 rounded">
             x{server.rates.replace(/^x/i, "")}
           </span>
           {trust.years > 0 && (
@@ -98,22 +98,24 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
         </div>
       </div>
 
-      <div className="text-right pr-2 hidden sm:block">
-        <p className="text-2xl font-mono text-white tabular-nums">
-          {server.votes.toLocaleString()}
-        </p>
-        <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
-          Votes
-        </p>
-      </div>
+      <div className="flex items-center justify-between sm:justify-end gap-5 sm:gap-6 mt-2 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 border-border/60">
+        <div className="text-right sm:text-center shrink-0">
+          <p className="text-3xl font-black text-foreground tabular-nums leading-none">
+            {server.votes.toLocaleString()}
+          </p>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mt-1">
+            Votes
+          </p>
+        </div>
 
-      <button
-        disabled={voting}
-        onClick={() => onVote(server.id)}
-        className="bg-white/5 hover:bg-brand text-white border border-white/10 px-6 py-2.5 rounded-lg font-bold transition-colors text-sm disabled:opacity-50 shrink-0"
-      >
-        {voting ? "..." : "VOTE"}
-      </button>
+        <button
+          disabled={voting}
+          onClick={() => onVote(server.id)}
+          className="bg-white/5 hover:bg-brand text-foreground border border-white/10 px-7 py-3 rounded-lg font-bold transition-colors text-sm disabled:opacity-50 shrink-0"
+        >
+          {voting ? "..." : "VOTE"}
+        </button>
+      </div>
     </div>
   );
 }
