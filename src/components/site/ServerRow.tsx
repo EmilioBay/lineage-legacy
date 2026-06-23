@@ -32,20 +32,26 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
 
   return (
     <div
-      role="button"
-      tabIndex={0}
+      role={onVote ? undefined : "button"}
+      tabIndex={onVote ? undefined : 0}
       onClick={openServer}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          openServer();
-        }
-      }}
+      onKeyDown={
+        onVote
+          ? undefined
+          : (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                openServer();
+              }
+            }
+      }
       className={`group relative overflow-hidden rounded-2xl border transition-all flex flex-col sm:flex-row items-stretch sm:items-center gap-5 sm:gap-6 p-6 cursor-pointer ${
+        onVote ? "" : "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      } ${
         isPodium
           ? "bg-gradient-to-r from-surface to-surface/40 border-brand/30 shadow-[0_0_0_1px_rgba(56,127,255,0.08)]"
           : "bg-surface border-border hover:border-brand/30"
-      } hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring`}
+      } hover:bg-surface-hover`}
     >
       {trust.badge === "legendary" && (
         <div className="absolute top-0 left-0 w-1 h-full bg-accent" />
