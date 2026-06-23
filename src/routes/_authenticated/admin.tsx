@@ -57,7 +57,8 @@ function Admin() {
               </div>
               <div className="text-xs text-muted-foreground mt-1 truncate">{s.domain} · {s.chronicle} · x{s.rates.replace(/^x/i, "")}</div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Link to="/_authenticated/admin/preview/$id" params={{ id: s.id }} className="bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-semibold">Preview Submission</Link>
               {s.status !== "approved" && <button onClick={() => mutation.mutate({ id: s.id, status: "approved" })} className="bg-brand text-brand-foreground px-3 py-1.5 rounded text-xs font-semibold">Approve</button>}
               {s.status !== "rejected" && <button onClick={() => mutation.mutate({ id: s.id, status: "rejected" })} className="bg-destructive text-destructive-foreground px-3 py-1.5 rounded text-xs font-semibold">Reject</button>}
               {s.status === "approved" && <button onClick={() => mutation.mutate({ id: s.id, status: "suspended" })} className="bg-white/10 px-3 py-1.5 rounded text-xs font-semibold">Suspend</button>}
