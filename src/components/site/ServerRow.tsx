@@ -1,5 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { getTrustBadge, badgeClasses } from "@/lib/trust";
+
+import { ShieldBadge } from "@/components/site/ShieldBadge";
+import { getTrustBadge } from "@/lib/trust";
+
 
 interface Props {
   rank: number;
