@@ -48,3 +48,22 @@ export function badgeClasses(badge: TrustBadge) {
     case "new":       return "bg-muted text-muted-foreground border-border";
   }
 }
+
+export function shieldStars(badge: TrustBadge): number {
+  switch (badge) {
+    case "new": return 0;
+    case "established": return 1;
+    case "veteran": return 2;
+    case "legendary": return 3;
+  }
+}
+
+export function shieldColorClass(badge: TrustBadge): string {
+  switch (badge) {
+    case "legendary": return "text-accent";
+    case "veteran": return "text-white";
+    case "established": return "text-brand";
+    case "new": return "text-muted-foreground";
+  }
+}
+

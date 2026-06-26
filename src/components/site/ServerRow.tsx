@@ -1,5 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
-import { getTrustBadge, badgeClasses } from "@/lib/trust";
+
+import { ShieldBadge } from "@/components/site/ShieldBadge";
+import { getTrustBadge } from "@/lib/trust";
+
 
 interface Props {
   rank: number;
@@ -85,14 +88,14 @@ export function ServerRow({ rank, server, onVote, voting }: Props) {
           <span className="text-2xl font-bold tracking-tight text-foreground group-hover:text-brand transition-colors truncate">
             {server.current_name}
           </span>
-          <span
-            className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider ${badgeClasses(
-              trust.badge,
-            )}`}
-          >
-            {trust.label}
-          </span>
+          <ShieldBadge
+            firstSeenAt={server.first_seen_at}
+            topRankYears={server.top_rank_years ?? 0}
+            size="md"
+            showLabel
+          />
         </div>
+
         <div className="flex flex-wrap items-center gap-3 mt-3 text-sm text-muted-foreground">
           <span className="font-mono bg-background/60 border border-border/70 px-2.5 py-1 rounded">
             {server.chronicle}
