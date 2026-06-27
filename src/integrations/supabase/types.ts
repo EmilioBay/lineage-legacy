@@ -168,6 +168,7 @@ export type Database = {
           id: string
           launch_date: string | null
           logo_url: string | null
+          moderator_note: string | null
           owner_id: string | null
           rates: string
           server_type: string | null
@@ -188,6 +189,7 @@ export type Database = {
           id?: string
           launch_date?: string | null
           logo_url?: string | null
+          moderator_note?: string | null
           owner_id?: string | null
           rates: string
           server_type?: string | null
@@ -208,6 +210,7 @@ export type Database = {
           id?: string
           launch_date?: string | null
           logo_url?: string | null
+          moderator_note?: string | null
           owner_id?: string | null
           rates?: string
           server_type?: string | null
@@ -326,7 +329,12 @@ export type Database = {
       app_role: "admin" | "user"
       payment_status: "pending" | "paid" | "cancelled"
       promotion_type: "banner" | "sponsored_new" | "spotlight"
-      server_status: "pending" | "approved" | "rejected" | "suspended"
+      server_status:
+        | "pending"
+        | "approved"
+        | "rejected"
+        | "suspended"
+        | "changes_requested"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -457,7 +465,13 @@ export const Constants = {
       app_role: ["admin", "user"],
       payment_status: ["pending", "paid", "cancelled"],
       promotion_type: ["banner", "sponsored_new", "spotlight"],
-      server_status: ["pending", "approved", "rejected", "suspended"],
+      server_status: [
+        "pending",
+        "approved",
+        "rejected",
+        "suspended",
+        "changes_requested",
+      ],
     },
   },
 } as const

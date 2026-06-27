@@ -1,12 +1,17 @@
-import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { createFileRoute, Link, notFound, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import { adminGetServerDetail } from "@/lib/servers.functions";
+import { adminGetServerDetail, adminSetServerStatus } from "@/lib/servers.functions";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/_authenticated/admin/preview/$id")({
   head: () => ({ meta: [{ title: "Preview Submission — L2Index Admin" }] }),
@@ -15,15 +20,32 @@ export const Route = createFileRoute("/_authenticated/admin/preview/$id")({
 
 function AdminPreview() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const fetch = useServerFn(adminGetServerDetail);
+  const setStatus = useServerFn(adminSetServerStatus);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin-server-preview", id],
     queryFn: async () => {
       const r = await fetch({ data: { id } });
       if (!r) throw notFound();
       return r;
     },
+  });
+
+  const [noteMode, setNoteMode] = useState<"changes_requested" | "rejected" | null>(null);
+  const [noteText, setNoteText] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async (v: { status: "approved" | "rejected" | "changes_requested" | "suspended"; moderator_note?: string }) =>
+      setStatus({ data: { id, ...v } }),
+    onSuccess: (_, v) => {
+      toast.success(`Marked as ${v.status.replace("_", " ")}`);
+      setNoteMode(null); setNoteText("");
+      refetch();
+      if (v.status === "approved") navigate({ to: "/admin" });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   if (isLoading) {
@@ -54,15 +76,34 @@ function AdminPreview() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Admin preview banner */}
-      <div className="bg-accent/10 border-b border-accent/30">
+      {/* Admin preview banner with moderation actions */}
+      <div className="bg-accent/10 border-b border-accent/30 sticky top-0 z-30 backdrop-blur">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-3 flex-wrap text-sm">
           <div className="text-accent font-semibold">
             👁️ Admin Preview · Status:{" "}
-            <span className="font-mono uppercase">{server.status}</span>
+            <span className="font-mono uppercase">{server.status.replace("_", " ")}</span>
           </div>
-          <Link to="/admin" className="text-brand hover:underline">← Back to admin</Link>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Link to="/admin" className="text-brand hover:underline text-xs">← Back</Link>
+            {server.status !== "approved" && (
+              <Button size="sm" onClick={() => mutation.mutate({ status: "approved" })} disabled={mutation.isPending}>Approve</Button>
+            )}
+            {server.status !== "changes_requested" && server.status !== "approved" && (
+              <Button size="sm" variant="outline" className="border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/15"
+                onClick={() => { setNoteMode("changes_requested"); setNoteText(server.moderator_note ?? ""); }}>
+                Request Changes
+              </Button>
+            )}
+            {server.status !== "rejected" && (
+              <Button size="sm" variant="destructive" onClick={() => { setNoteMode("rejected"); setNoteText(server.moderator_note ?? ""); }}>Reject</Button>
+            )}
+          </div>
         </div>
+        {server.moderator_note && (
+          <div className="max-w-6xl mx-auto px-6 pb-3 text-xs text-yellow-300/90">
+            <span className="font-semibold">Current moderator note:</span> {server.moderator_note}
+          </div>
+        )}
       </div>
 
       {server.banner_url && (
@@ -189,6 +230,34 @@ function AdminPreview() {
         </aside>
       </main>
       <Footer />
+
+      <Dialog open={!!noteMode} onOpenChange={(o) => { if (!o) { setNoteMode(null); setNoteText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{noteMode === "changes_requested" ? "Request changes" : "Reject submission"}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {noteMode === "changes_requested"
+              ? "Explain what the owner must correct before this can be approved."
+              : "Optional — explain why this submission was rejected."}
+          </p>
+          <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={6} maxLength={2000}
+            placeholder="e.g. Logo is too low resolution. Please upload at least 256×256." />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setNoteMode(null); setNoteText(""); }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!noteMode) return;
+                if (noteMode === "changes_requested" && noteText.trim().length < 5) { toast.error("Please write a short explanation."); return; }
+                mutation.mutate({ status: noteMode, moderator_note: noteText.trim() || undefined });
+              }}
+              disabled={mutation.isPending}
+            >
+              {noteMode === "changes_requested" ? "Send request" : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

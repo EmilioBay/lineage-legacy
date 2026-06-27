@@ -19,8 +19,8 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ServerIdRouteImport } from './routes/server.$id'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAddServerRouteImport } from './routes/_authenticated/add-server'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedAdminPreviewIdRouteImport } from './routes/_authenticated/admin.preview.$id'
 
 const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
@@ -72,21 +72,21 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedAddServerRoute = AuthenticatedAddServerRouteImport.update({
   id: '/add-server',
   path: '/add-server',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminPreviewIdRoute =
   AuthenticatedAdminPreviewIdRouteImport.update({
-    id: '/preview/$id',
-    path: '/preview/$id',
-    getParentRoute: () => AuthenticatedAdminRoute,
+    id: '/admin/preview/$id',
+    path: '/admin/preview/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -98,9 +98,9 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/add-server': typeof AuthenticatedAddServerRoute
-  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/server/$id': typeof ServerIdRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/preview/$id': typeof AuthenticatedAdminPreviewIdRoute
 }
 export interface FileRoutesByTo {
@@ -112,9 +112,9 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/add-server': typeof AuthenticatedAddServerRoute
-  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/server/$id': typeof ServerIdRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/preview/$id': typeof AuthenticatedAdminPreviewIdRoute
 }
 export interface FileRoutesById {
@@ -128,9 +128,9 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/add-server': typeof AuthenticatedAddServerRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/server/$id': typeof ServerIdRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/preview/$id': typeof AuthenticatedAdminPreviewIdRoute
 }
 export interface FileRouteTypes {
@@ -144,9 +144,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/add-server'
-    | '/admin'
     | '/dashboard'
     | '/server/$id'
+    | '/admin/'
     | '/admin/preview/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -158,9 +158,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/add-server'
-    | '/admin'
     | '/dashboard'
     | '/server/$id'
+    | '/admin'
     | '/admin/preview/$id'
   id:
     | '__root__'
@@ -173,9 +173,9 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sitemap.xml'
     | '/_authenticated/add-server'
-    | '/_authenticated/admin'
     | '/_authenticated/dashboard'
     | '/server/$id'
+    | '/_authenticated/admin/'
     | '/_authenticated/admin/preview/$id'
   fileRoutesById: FileRoutesById
 }
@@ -263,13 +263,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/add-server': {
       id: '/_authenticated/add-server'
       path: '/add-server'
@@ -277,37 +270,35 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAddServerRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/preview/$id': {
       id: '/_authenticated/admin/preview/$id'
-      path: '/preview/$id'
+      path: '/admin/preview/$id'
       fullPath: '/admin/preview/$id'
       preLoaderRoute: typeof AuthenticatedAdminPreviewIdRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
-interface AuthenticatedAdminRouteChildren {
-  AuthenticatedAdminPreviewIdRoute: typeof AuthenticatedAdminPreviewIdRoute
-}
-
-const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
-  AuthenticatedAdminPreviewIdRoute: AuthenticatedAdminPreviewIdRoute,
-}
-
-const AuthenticatedAdminRouteWithChildren =
-  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAddServerRoute: typeof AuthenticatedAddServerRoute
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminPreviewIdRoute: typeof AuthenticatedAdminPreviewIdRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAddServerRoute: AuthenticatedAddServerRoute,
-  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminPreviewIdRoute: AuthenticatedAdminPreviewIdRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
