@@ -7,6 +7,7 @@ import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { ServerRow } from "@/components/site/ServerRow";
 import { getHomepageData } from "@/lib/servers.functions";
+import { TopBannerStrip, WithSideRails } from "@/components/site/AdSlot";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 
 export const Route = createFileRoute("/")({
