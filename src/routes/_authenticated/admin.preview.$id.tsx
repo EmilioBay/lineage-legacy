@@ -20,15 +20,32 @@ export const Route = createFileRoute("/_authenticated/admin/preview/$id")({
 
 function AdminPreview() {
   const { id } = Route.useParams();
+  const navigate = useNavigate();
   const fetch = useServerFn(adminGetServerDetail);
+  const setStatus = useServerFn(adminSetServerStatus);
 
-  const { data, isLoading, error } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin-server-preview", id],
     queryFn: async () => {
       const r = await fetch({ data: { id } });
       if (!r) throw notFound();
       return r;
     },
+  });
+
+  const [noteMode, setNoteMode] = useState<"changes_requested" | "rejected" | null>(null);
+  const [noteText, setNoteText] = useState("");
+
+  const mutation = useMutation({
+    mutationFn: async (v: { status: "approved" | "rejected" | "changes_requested" | "suspended"; moderator_note?: string }) =>
+      setStatus({ data: { id, ...v } }),
+    onSuccess: (_, v) => {
+      toast.success(`Marked as ${v.status.replace("_", " ")}`);
+      setNoteMode(null); setNoteText("");
+      refetch();
+      if (v.status === "approved") navigate({ to: "/admin" });
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
 
   if (isLoading) {
@@ -59,15 +76,34 @@ function AdminPreview() {
     <div className="min-h-screen bg-background">
       <Header />
 
-      {/* Admin preview banner */}
-      <div className="bg-accent/10 border-b border-accent/30">
+      {/* Admin preview banner with moderation actions */}
+      <div className="bg-accent/10 border-b border-accent/30 sticky top-0 z-30 backdrop-blur">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between gap-3 flex-wrap text-sm">
           <div className="text-accent font-semibold">
             👁️ Admin Preview · Status:{" "}
-            <span className="font-mono uppercase">{server.status}</span>
+            <span className="font-mono uppercase">{server.status.replace("_", " ")}</span>
           </div>
-          <Link to="/admin" className="text-brand hover:underline">← Back to admin</Link>
+          <div className="flex gap-2 items-center flex-wrap">
+            <Link to="/admin" className="text-brand hover:underline text-xs">← Back</Link>
+            {server.status !== "approved" && (
+              <Button size="sm" onClick={() => mutation.mutate({ status: "approved" })} disabled={mutation.isPending}>Approve</Button>
+            )}
+            {server.status !== "changes_requested" && server.status !== "approved" && (
+              <Button size="sm" variant="outline" className="border-yellow-500/40 text-yellow-300 hover:bg-yellow-500/15"
+                onClick={() => { setNoteMode("changes_requested"); setNoteText(server.moderator_note ?? ""); }}>
+                Request Changes
+              </Button>
+            )}
+            {server.status !== "rejected" && (
+              <Button size="sm" variant="destructive" onClick={() => { setNoteMode("rejected"); setNoteText(server.moderator_note ?? ""); }}>Reject</Button>
+            )}
+          </div>
         </div>
+        {server.moderator_note && (
+          <div className="max-w-6xl mx-auto px-6 pb-3 text-xs text-yellow-300/90">
+            <span className="font-semibold">Current moderator note:</span> {server.moderator_note}
+          </div>
+        )}
       </div>
 
       {server.banner_url && (
