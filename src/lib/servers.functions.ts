@@ -383,11 +383,21 @@ export const adminListServers = createServerFn({ method: "GET" })
 
 export const adminSetServerStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d) => z.object({ id: z.string().uuid(), status: z.enum(["pending", "approved", "rejected", "suspended"]) }).parse(d))
+  .inputValidator((d) => z.object({
+    id: z.string().uuid(),
+    status: z.enum(["pending", "approved", "rejected", "suspended", "changes_requested"]),
+    moderator_note: z.string().trim().max(2000).optional(),
+  }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: isAdmin } = await context.supabase.rpc("has_role" as never, { _user_id: context.userId, _role: "admin" } as never);
     if (!isAdmin) throw new Error("Forbidden");
-    const { error } = await context.supabase.from("servers").update({ status: data.status }).eq("id", data.id);
+    const update: { status: typeof data.status; moderator_note?: string | null } = { status: data.status };
+    if (data.status === "changes_requested" || data.status === "rejected") {
+      update.moderator_note = data.moderator_note ?? null;
+    } else if (data.status === "approved") {
+      update.moderator_note = null;
+    }
+    const { error } = await context.supabase.from("servers").update(update).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
