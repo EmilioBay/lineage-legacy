@@ -309,6 +309,7 @@ function ServerPage() {
           </div>
         </section>
       </main>
+      </WithSideRails>
 
       <Footer />
     </div>
