@@ -230,6 +230,34 @@ function AdminPreview() {
         </aside>
       </main>
       <Footer />
+
+      <Dialog open={!!noteMode} onOpenChange={(o) => { if (!o) { setNoteMode(null); setNoteText(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{noteMode === "changes_requested" ? "Request changes" : "Reject submission"}</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {noteMode === "changes_requested"
+              ? "Explain what the owner must correct before this can be approved."
+              : "Optional — explain why this submission was rejected."}
+          </p>
+          <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={6} maxLength={2000}
+            placeholder="e.g. Logo is too low resolution. Please upload at least 256×256." />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setNoteMode(null); setNoteText(""); }}>Cancel</Button>
+            <Button
+              onClick={() => {
+                if (!noteMode) return;
+                if (noteMode === "changes_requested" && noteText.trim().length < 5) { toast.error("Please write a short explanation."); return; }
+                mutation.mutate({ status: noteMode, moderator_note: noteText.trim() || undefined });
+              }}
+              disabled={mutation.isPending}
+            >
+              {noteMode === "changes_requested" ? "Send request" : "Reject"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
