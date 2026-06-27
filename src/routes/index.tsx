@@ -213,6 +213,7 @@ function Home() {
           </section>
         </div>
       </main>
+      </WithSideRails>
 
       <Footer />
     </div>
