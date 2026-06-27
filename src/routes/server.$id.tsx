@@ -8,6 +8,7 @@ import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, Tr
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { ShieldBadge } from "@/components/site/ShieldBadge";
+import { WithSideRails } from "@/components/site/AdSlot";
 import { getServerDetail } from "@/lib/servers.functions";
 import { castVote, getVoteCooldown } from "@/lib/voting.functions";
 import { getFingerprint } from "@/lib/fingerprint";
@@ -97,6 +98,7 @@ function ServerPage() {
         </div>
       )}
 
+      <WithSideRails>
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-10">
 
         {/* Identity header */}
@@ -307,6 +309,7 @@ function ServerPage() {
           </div>
         </section>
       </main>
+      </WithSideRails>
 
       <Footer />
     </div>

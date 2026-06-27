@@ -7,6 +7,7 @@ import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { ServerRow } from "@/components/site/ServerRow";
 import { getHomepageData } from "@/lib/servers.functions";
+import { TopBannerStrip, WithSideRails } from "@/components/site/AdSlot";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 
 export const Route = createFileRoute("/")({
@@ -41,7 +42,10 @@ function Home() {
     <div className="min-h-screen bg-background text-foreground">
       <Header />
 
+      <TopBannerStrip />
+
       {/* Hero */}
+      <WithSideRails>
       <header className="py-16 px-6 max-w-7xl mx-auto text-center">
         <h1 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4">
           Find <span className="text-brand">Trusted</span> Lineage 2 Servers
@@ -209,6 +213,7 @@ function Home() {
           </section>
         </div>
       </main>
+      </WithSideRails>
 
       <Footer />
     </div>

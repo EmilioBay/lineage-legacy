@@ -14,6 +14,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ContactRouteImport } from './routes/contact'
 import { Route as BrowseRouteImport } from './routes/browse'
 import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AdvertisingRouteImport } from './routes/advertising'
 import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
@@ -46,6 +47,11 @@ const BrowseRoute = BrowseRouteImport.update({
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
   path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdvertisingRoute = AdvertisingRouteImport.update({
+  id: '/advertising',
+  path: '/advertising',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AboutRoute = AboutRouteImport.update({
@@ -92,6 +98,7 @@ const AuthenticatedAdminPreviewIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/advertising': typeof AdvertisingRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/contact': typeof ContactRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/about': typeof AboutRoute
+  '/advertising': typeof AdvertisingRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/contact': typeof ContactRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/about': typeof AboutRoute
+  '/advertising': typeof AdvertisingRoute
   '/auth': typeof AuthRoute
   '/browse': typeof BrowseRoute
   '/contact': typeof ContactRoute
@@ -138,6 +147,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/about'
+    | '/advertising'
     | '/auth'
     | '/browse'
     | '/contact'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/about'
+    | '/advertising'
     | '/auth'
     | '/browse'
     | '/contact'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/about'
+    | '/advertising'
     | '/auth'
     | '/browse'
     | '/contact'
@@ -183,6 +195,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AboutRoute: typeof AboutRoute
+  AdvertisingRoute: typeof AdvertisingRoute
   AuthRoute: typeof AuthRoute
   BrowseRoute: typeof BrowseRoute
   ContactRoute: typeof ContactRoute
@@ -226,6 +239,13 @@ declare module '@tanstack/react-router' {
       path: '/auth'
       fullPath: '/auth'
       preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/advertising': {
+      id: '/advertising'
+      path: '/advertising'
+      fullPath: '/advertising'
+      preLoaderRoute: typeof AdvertisingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/about': {
@@ -308,6 +328,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AboutRoute: AboutRoute,
+  AdvertisingRoute: AdvertisingRoute,
   AuthRoute: AuthRoute,
   BrowseRoute: BrowseRoute,
   ContactRoute: ContactRoute,
