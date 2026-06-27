@@ -98,6 +98,7 @@ function ServerPage() {
         </div>
       )}
 
+      <WithSideRails>
       <main className="max-w-6xl mx-auto px-4 md:px-6 py-8 md:py-10">
 
         {/* Identity header */}
