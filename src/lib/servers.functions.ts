@@ -19,7 +19,7 @@ export const getHomepageData = createServerFn({ method: "GET" }).handler(async (
 
   const { data: servers } = await sb
     .from("servers")
-    .select("id, current_name, logo_url, chronicle, rates, first_seen_at, country, description, banner_url, website_url")
+    .select("id, current_name, logo_url, chronicle, rates, first_seen_at, country, description, banner_url, website_url, launch_date, server_type")
     .eq("status", "approved");
 
   const serverIds = (servers ?? []).map((s) => s.id);
