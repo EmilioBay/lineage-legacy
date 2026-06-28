@@ -140,13 +140,36 @@ export const getServerDetail = createServerFn({ method: "GET" })
 
     if (!server) return null;
 
-    const [{ data: nameHistory }, { data: domainHistory }, { data: yearly }, { data: stats }, { data: votes }] = await Promise.all([
+    const [{ data: nameHistory }, { data: domainHistory }, { data: yearly }, { data: stats }, { data: votes }, { data: allApproved }, { data: allVotes }] = await Promise.all([
       sb.from("server_name_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
       sb.from("server_domain_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
       sb.from("yearly_rankings").select("*").eq("server_id", data.id).order("year", { ascending: false }).limit(5),
       sb.from("server_stats").select("date, rank, votes").eq("server_id", data.id).order("date"),
       sb.from("votes").select("id").eq("server_id", data.id).eq("vote_year", currentYear),
+      sb.from("servers").select("id, current_name, logo_url, chronicle, rates, first_seen_at, country").eq("status", "approved"),
+      sb.from("votes").select("server_id").eq("vote_year", currentYear),
     ]);
+
+    // Compute current rank from vote tallies
+    const tallies = (allVotes ?? []).reduce<Record<string, number>>((acc, v) => {
+      acc[v.server_id] = (acc[v.server_id] ?? 0) + 1; return acc;
+    }, {});
+    const ranking = (allApproved ?? [])
+      .map((s) => ({ id: s.id, votes: tallies[s.id] ?? 0 }))
+      .sort((a, b) => b.votes - a.votes);
+    const rankIdx = ranking.findIndex((r) => r.id === data.id);
+    const currentRank = rankIdx >= 0 ? rankIdx + 1 : null;
+
+    // Similar servers: same chronicle, similar rates, exclude self
+    const targetRate = parseInt(String(server.rates).replace(/[^0-9]/g, ""), 10) || 0;
+    const similar = (allApproved ?? [])
+      .filter((s) => s.id !== data.id && s.chronicle === server.chronicle)
+      .map((s) => {
+        const r = parseInt(String(s.rates).replace(/[^0-9]/g, ""), 10) || 0;
+        return { ...s, _diff: Math.abs(r - targetRate), votes: tallies[s.id] ?? 0 };
+      })
+      .sort((a, b) => a._diff - b._diff || b.votes - a.votes)
+      .slice(0, 6);
 
     return {
       server,
@@ -155,8 +178,53 @@ export const getServerDetail = createServerFn({ method: "GET" })
       yearly: yearly ?? [],
       stats: stats ?? [],
       currentSeasonVotes: votes?.length ?? 0,
+      currentRank,
+      similar,
     };
   });
+
+// ----- Autocomplete search: name, prev names, domain, chronicle, country, rates -----
+export const searchServers = createServerFn({ method: "GET" })
+  .inputValidator((d) => z.object({ q: z.string().trim().min(1).max(100) }).parse(d))
+  .handler(async ({ data }) => {
+    const sb = publicClient();
+    const term = `%${data.q}%`;
+    const q = data.q.toLowerCase();
+
+    const [{ data: direct }, { data: nameHits }, { data: domainHits }] = await Promise.all([
+      sb.from("servers")
+        .select("id, current_name, logo_url, chronicle, rates, country, domain, first_seen_at")
+        .eq("status", "approved")
+        .or(`current_name.ilike.${term},domain.ilike.${term},chronicle.ilike.${term},country.ilike.${term},rates.ilike.${term}`)
+        .limit(20),
+      sb.from("server_name_history").select("server_id, old_name").ilike("old_name", term).limit(20),
+      sb.from("server_domain_history").select("server_id, old_domain").ilike("old_domain", term).limit(20),
+    ]);
+
+    const matchReasonById: Record<string, string> = {};
+    for (const r of direct ?? []) {
+      if (r.current_name?.toLowerCase().includes(q)) matchReasonById[r.id] = `Name: ${r.current_name}`;
+      else if (r.domain?.toLowerCase().includes(q)) matchReasonById[r.id] = `Domain: ${r.domain}`;
+      else if (r.chronicle?.toLowerCase().includes(q)) matchReasonById[r.id] = `Chronicle: ${r.chronicle}`;
+      else if (r.country?.toLowerCase().includes(q)) matchReasonById[r.id] = `Country: ${r.country}`;
+      else if (String(r.rates).toLowerCase().includes(q)) matchReasonById[r.id] = `Rate: x${String(r.rates).replace(/^x/i, "")}`;
+    }
+    for (const h of nameHits ?? []) matchReasonById[h.server_id] ??= `Previously: ${h.old_name}`;
+    for (const h of domainHits ?? []) matchReasonById[h.server_id] ??= `Previous domain: ${h.old_domain}`;
+
+    const existing = new Set((direct ?? []).map((s) => s.id));
+    const missingIds = Object.keys(matchReasonById).filter((id) => !existing.has(id));
+    let extras: NonNullable<typeof direct> = [];
+    if (missingIds.length) {
+      const { data: more } = await sb.from("servers")
+        .select("id, current_name, logo_url, chronicle, rates, country, domain, first_seen_at")
+        .eq("status", "approved").in("id", missingIds);
+      extras = more ?? [];
+    }
+    const combined = [...(direct ?? []), ...extras].slice(0, 12);
+    return combined.map((s) => ({ ...s, match: matchReasonById[s.id] ?? `Name: ${s.current_name}` }));
+  });
+
 
 // ----- Browse / search -----
 export const listServers = createServerFn({ method: "GET" })
