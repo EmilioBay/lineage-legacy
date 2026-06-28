@@ -5,10 +5,9 @@ import { useServerFn } from "@tanstack/react-start";
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import { ServerRow } from "@/components/site/ServerRow";
 import { getHomepageData } from "@/lib/servers.functions";
 import { TopBannerStrip, WithSideRails } from "@/components/site/AdSlot";
-import { getTrustBadge, badgeClasses } from "@/lib/trust";
+import { RankingTable } from "@/components/site/RankingTable";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -21,6 +20,13 @@ export const Route = createFileRoute("/")({
   }),
   component: Home,
 });
+
+function formatLaunch(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  const days = Math.max(0, Math.ceil((d.getTime() - Date.now()) / (24 * 3600 * 1000)));
+  return days === 0 ? "Today" : `${days}d`;
+}
 
 function Home() {
   const fetchHome = useServerFn(getHomepageData);
@@ -37,6 +43,7 @@ function Home() {
     navigate({ to: "/browse", search: { q: search.trim() || undefined } });
   }
 
+  const year = new Date().getFullYear();
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -44,175 +51,125 @@ function Home() {
 
       <TopBannerStrip />
 
-      {/* Hero */}
       <WithSideRails>
-      <header className="py-16 px-6 max-w-7xl mx-auto text-center">
-        <h1 className="text-5xl md:text-6xl font-extrabold text-white tracking-tight mb-4">
-          Find <span className="text-brand">Trusted</span> Lineage 2 Servers
-        </h1>
-        <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-          The only Lineage 2 directory that preserves server history. No resets, no hidden rebrands — just transparent performance data over time.
-        </p>
+        {/* Hero */}
+        <header className="py-10 px-6 max-w-7xl mx-auto text-center">
+          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-3">
+            Find <span className="text-brand">Trusted</span> Lineage 2 Servers
+          </h1>
+          <p className="text-base text-muted-foreground max-w-2xl mx-auto mb-6">
+            The only Lineage 2 directory that preserves server history. No resets, no hidden rebrands — just transparent performance data over time.
+          </p>
 
-        <form onSubmit={onSearch} className="max-w-2xl mx-auto flex gap-2 mb-8">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search servers by name, old name, or domain..."
-            className="flex-1 bg-surface border border-border rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-brand"
-          />
-          <button type="submit" className="bg-brand text-brand-foreground px-6 py-3 rounded-lg text-sm font-semibold hover:opacity-90 transition">Search</button>
-        </form>
+          <form onSubmit={onSearch} className="max-w-2xl mx-auto flex gap-2 mb-4">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search servers by name, old name, or domain..."
+              className="flex-1 bg-surface border border-border rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-brand"
+            />
+            <button type="submit" className="bg-brand text-brand-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition">Search</button>
+          </form>
 
-        <div className="flex justify-center gap-4 flex-wrap">
-          <Link to="/browse" className="bg-surface border border-border px-5 py-2 rounded-lg text-sm font-medium hover:bg-surface-hover transition">Browse Servers</Link>
-          <Link to="/add-server" className="bg-white/5 border border-white/10 px-5 py-2 rounded-lg text-sm font-medium hover:bg-white/10 transition">Add Server</Link>
-        </div>
-
-        <div className="flex justify-center gap-4 mt-10">
-          <div className="bg-surface/50 border border-border p-4 rounded-xl">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Total Servers</p>
-            <p className="text-xl font-mono text-white">{data?.totalServers.toLocaleString() ?? "—"}</p>
+          <div className="flex justify-center gap-4 flex-wrap">
+            <div className="bg-surface/50 border border-border px-4 py-2 rounded-lg">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mr-2">Servers</span>
+              <span className="text-sm font-mono text-white">{data?.totalServers.toLocaleString() ?? "—"}</span>
+            </div>
+            <div className="bg-surface/50 border border-border px-4 py-2 rounded-lg">
+              <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mr-2">Season Votes</span>
+              <span className="text-sm font-mono text-white">{data?.totalVotes.toLocaleString() ?? "—"}</span>
+            </div>
           </div>
-          <div className="bg-surface/50 border border-border p-4 rounded-xl">
-            <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Votes this Season</p>
-            <p className="text-xl font-mono text-white">{data?.totalVotes.toLocaleString() ?? "—"}</p>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-6 pb-24">
-        {/* Banner zone */}
-        {(data?.banners?.length ?? 0) > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-12">
-            {data!.banners.map((b) => (
-              <Link key={b.id} to="/server/$id" params={{ id: b.id }} className="block w-full aspect-[4/1] bg-surface border border-border rounded-xl overflow-hidden relative group">
-                {b.banner_url ? (
-                  <img src={b.banner_url} alt={b.current_name} className="size-full object-cover" />
-                ) : (
-                  <div className="size-full grid place-items-center text-muted-foreground text-sm">{b.current_name}</div>
+        <main className="max-w-7xl mx-auto px-6 pb-24">
+          {/* Sponsored banners */}
+          {(data?.banners?.length ?? 0) > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              {data!.banners.map((b) => (
+                <Link key={b.id} to="/server/$id" params={{ id: b.id }} className="block w-full aspect-[4/1] bg-surface border border-border rounded-xl overflow-hidden relative group">
+                  {b.banner_url ? (
+                    <img src={b.banner_url} alt={b.current_name} className="size-full object-cover" />
+                  ) : (
+                    <div className="size-full grid place-items-center text-muted-foreground text-sm">{b.current_name}</div>
+                  )}
+                  <span className="absolute top-2 right-2 text-[9px] font-bold bg-brand text-brand-foreground px-2 py-0.5 rounded uppercase">Sponsored</span>
+                </Link>
+              ))}
+            </div>
+          )}
+
+          {isLoading && <p className="text-muted-foreground text-sm text-center py-8">Loading rankings…</p>}
+
+          {/* Three-column compact tables */}
+          <div className="grid lg:grid-cols-3 gap-4 mb-8">
+            <RankingTable
+              accent="brand"
+              title="Current Season"
+              yearBadge={year}
+              servers={data?.ranked ?? []}
+              emptyMessage="No approved servers yet."
+            />
+
+            <RankingTable
+              accent="gold"
+              title="Most Trusted"
+              servers={data?.trusted ?? []}
+              emptyMessage="Trust builds over time."
+              showVotes={false}
+            />
+
+            <RankingTable
+              accent="success"
+              title="Sponsored Servers"
+              servers={data?.sponsoredNew ?? []}
+              emptyMessage="No sponsored listings."
+              showRank={false}
+              showVotes={false}
+              allSponsored
+              viewAllTo="/advertising"
+            />
+          </div>
+
+          {/* Opening Soon */}
+          {(data?.openingSoon?.length ?? 0) > 0 && (
+            <div className="mb-12">
+              <RankingTable
+                accent="accent"
+                title="Opening Soon"
+                servers={data!.openingSoon}
+                showRank={false}
+                showVotes={false}
+                extraHeader="Launch"
+                rowExtra={(s) => (
+                  <span className="font-mono text-accent w-12 inline-block text-right">
+                    {formatLaunch(s.launch_date)}
+                  </span>
                 )}
-                <span className="absolute top-2 right-2 text-[9px] font-bold bg-brand text-brand-foreground px-2 py-0.5 rounded uppercase">Sponsored</span>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        {/* Why L2Index? */}
-        <section className="mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
-            <p className="text-muted-foreground mt-2">Built on transparency, audited by history.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              { t: "Permanent History", d: "Every server name, domain, and ranking is preserved forever. No silent rebrands, no deleted past." },
-              { t: "Verified Trust Badges", d: "Servers earn New, Established, Veteran, and Legendary status based on real listing age and ranking consistency." },
-              { t: "Fair Voting", d: "One vote per IP every 12 hours. No bot farms, no inflated numbers — just real player support." },
-            ].map((f) => (
-              <div key={f.t} className="bg-surface border border-border rounded-xl p-6">
-                <div className="size-10 rounded-lg bg-brand/10 border border-brand/20 grid place-items-center text-brand font-bold mb-3">✓</div>
-                <h3 className="text-white font-bold mb-2">{f.t}</h3>
-                <p className="text-sm text-muted-foreground">{f.d}</p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Current Season Rankings */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                Current Season
-                <span className="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded border border-brand/20 uppercase font-mono">{new Date().getFullYear()}</span>
-              </h2>
-              <Link to="/browse" className="text-xs text-brand hover:underline">View All</Link>
-            </div>
-
-            {isLoading && <p className="text-muted-foreground text-sm">Loading rankings…</p>}
-            {!isLoading && data?.ranked.length === 0 && (
-              <div className="text-center py-12 border border-dashed border-border rounded-xl">
-                <p className="text-muted-foreground text-sm">No approved servers yet.</p>
-                <Link to="/add-server" className="inline-block mt-3 bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold">Be the first</Link>
-              </div>
-            )}
-
-            {data?.ranked.slice(0, 8).map((s, i) => (
-              <ServerRow
-                key={s.id}
-                rank={i + 1}
-                server={s}
               />
-            ))}
-          </section>
+            </div>
+          )}
 
-          {/* Most Trusted (center) */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">Most Trusted</h2>
-              <Link to="/browse" className="text-xs text-brand hover:underline">View All</Link>
+          {/* Why L2Index? — compact */}
+          <section className="mb-4">
+            <div className="text-center mb-4">
+              <h2 className="text-xl font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
             </div>
-            <div className="bg-surface border border-border rounded-xl divide-y divide-border">
-              {(data?.trusted ?? []).length === 0 && (
-                <p className="p-4 text-xs text-muted-foreground">Trust builds over time. No veterans listed yet.</p>
-              )}
-              {data?.trusted.map((s) => {
-                const t = getTrustBadge({ firstSeenAt: s.first_seen_at, topRankYears: s.top_rank_years });
-                return (
-                  <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="p-4 flex items-center justify-between group">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className={`size-10 rounded-full grid place-items-center text-[10px] font-bold border ${badgeClasses(t.badge)}`}>{t.years || "<1"}Y</div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-white group-hover:text-brand transition-colors truncate">{s.current_name}</p>
-                        <p className="text-[10px] text-muted-foreground">
-                          Listed {new Date(s.first_seen_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })}
-                          {t.topRankYears > 0 && <span className="text-accent"> · {t.topRankYears}× top 10</span>}
-                        </p>
-                      </div>
-                    </div>
-                    <span className={`text-[10px] uppercase font-semibold ${t.badge === "legendary" ? "text-accent" : "text-muted-foreground"}`}>{t.label}</span>
-                  </Link>
-                );
-              })}
+            <div className="grid md:grid-cols-3 gap-3">
+              {[
+                { t: "Permanent History", d: "Every server name, domain, and ranking is preserved forever." },
+                { t: "Verified Trust", d: "Badges earned from real listing age and ranking consistency." },
+                { t: "Fair Voting", d: "One vote per IP every 12 hours. No bot farms." },
+              ].map((f) => (
+                <div key={f.t} className="bg-surface border border-border rounded-lg p-3">
+                  <h3 className="text-white font-bold text-sm mb-1">{f.t}</h3>
+                  <p className="text-xs text-muted-foreground">{f.d}</p>
+                </div>
+              ))}
             </div>
           </section>
-
-          {/* New Servers */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">New Servers</h2>
-              <Link to="/browse" className="text-xs text-brand hover:underline">View All</Link>
-            </div>
-            <div className="space-y-3">
-              {data?.sponsoredNew.map((s) => (
-                <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="block bg-surface border border-border rounded-xl p-4 hover:border-brand/30 transition">
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-[9px] font-bold bg-brand text-brand-foreground px-2 py-0.5 rounded uppercase">Sponsored</span>
-                    <span className="text-[10px] font-mono text-accent">x{s.rates.replace(/^x/i, "")}</span>
-                  </div>
-                  <h4 className="text-white font-bold">{s.current_name}</h4>
-                  <p className="text-xs text-muted-foreground mt-1 truncate">{s.chronicle} · {s.description.slice(0, 60)}</p>
-                </Link>
-              ))}
-              {data?.organicNew.map((s) => (
-                <Link key={s.id} to="/server/$id" params={{ id: s.id }} className="bg-surface/50 border border-border rounded-xl p-3 flex items-center gap-3 hover:bg-surface transition">
-                  <div className="size-10 bg-background rounded border border-border overflow-hidden grid place-items-center">
-                    {s.logo_url ? <img src={s.logo_url} alt="" className="size-full object-cover" /> : <span className="text-[10px] text-muted-foreground">{s.current_name.slice(0,2)}</span>}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{s.current_name}</p>
-                    <p className="text-[9px] text-muted-foreground">{s.chronicle} · Added {new Date(s.first_seen_at).toLocaleDateString()}</p>
-                  </div>
-                </Link>
-              ))}
-              {data && data.sponsoredNew.length === 0 && data.organicNew.length === 0 && (
-                <p className="text-xs text-muted-foreground">No new servers yet.</p>
-              )}
-            </div>
-          </section>
-        </div>
-      </main>
+        </main>
       </WithSideRails>
 
       <Footer />
