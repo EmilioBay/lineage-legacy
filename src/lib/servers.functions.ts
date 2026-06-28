@@ -19,7 +19,7 @@ export const getHomepageData = createServerFn({ method: "GET" }).handler(async (
 
   const { data: servers } = await sb
     .from("servers")
-    .select("id, current_name, logo_url, chronicle, rates, first_seen_at, country, description, banner_url, website_url")
+    .select("id, current_name, logo_url, chronicle, rates, first_seen_at, country, description, banner_url, website_url, launch_date, server_type")
     .eq("status", "approved");
 
   const serverIds = (servers ?? []).map((s) => s.id);
@@ -57,19 +57,31 @@ export const getHomepageData = createServerFn({ method: "GET" }).handler(async (
     top_rank_years: topRankYears[s.id] ?? 0,
   }));
 
-  // Current season rankings (by votes desc)
-  const ranked = [...withVotes].sort((a, b) => b.votes - a.votes).slice(0, 10);
+  const nowTs = Date.now();
+  const isLaunched = (s: { launch_date?: string | null }) =>
+    !s.launch_date || new Date(s.launch_date).getTime() <= nowTs;
+
+  const launched = withVotes.filter(isLaunched);
+
+  // Current season rankings (by votes desc) — only launched servers
+  const ranked = [...launched].sort((a, b) => b.votes - a.votes).slice(0, 10);
 
   // Most trusted: blended score of age + top-rank finishes
-  const trusted = [...withVotes]
+  const trusted = [...launched]
     .map((s) => {
-      const yrs = (Date.now() - new Date(s.first_seen_at).getTime()) / (365.25 * 24 * 3600 * 1000);
+      const yrs = (nowTs - new Date(s.first_seen_at).getTime()) / (365.25 * 24 * 3600 * 1000);
       return { ...s, _trust: yrs + s.top_rank_years * 1.5 };
     })
     .sort((a, b) => b._trust - a._trust || b.votes - a.votes)
-    .slice(0, 5);
+    .slice(0, 10);
 
-  // Sponsored new (paid promotions, type sponsored_new)
+  // Opening soon: approved servers with future launch_date
+  const openingSoon = withVotes
+    .filter((s) => s.launch_date && new Date(s.launch_date).getTime() > nowTs)
+    .sort((a, b) => new Date(a.launch_date!).getTime() - new Date(b.launch_date!).getTime())
+    .slice(0, 10);
+
+  // Sponsored servers (paid promotions, type sponsored_new) — compact list
   const { data: sponsoredPromos } = await sb
     .from("promotions")
     .select("server_id, position, end_date, payment_status, type")
@@ -78,11 +90,13 @@ export const getHomepageData = createServerFn({ method: "GET" }).handler(async (
     .gte("end_date", new Date().toISOString())
     .order("position");
 
-  const sponsoredIds = (sponsoredPromos ?? []).slice(0, 3).map((p) => p.server_id);
-  const sponsoredNew = withVotes.filter((s) => sponsoredIds.includes(s.id));
+  const sponsoredIds = (sponsoredPromos ?? []).map((p) => p.server_id);
+  const sponsoredNew = withVotes
+    .filter((s) => sponsoredIds.includes(s.id))
+    .slice(0, 10);
 
-  // Newest 7 organic (not in sponsored)
-  const organicNew = [...withVotes]
+  // Newest organic kept for compatibility (unused on new homepage)
+  const organicNew = [...launched]
     .filter((s) => !sponsoredIds.includes(s.id))
     .sort((a, b) => new Date(b.first_seen_at).getTime() - new Date(a.first_seen_at).getTime())
     .slice(0, 7);
@@ -103,6 +117,7 @@ export const getHomepageData = createServerFn({ method: "GET" }).handler(async (
     trusted,
     sponsoredNew,
     organicNew,
+    openingSoon,
     banners,
     totalServers: withVotes.length,
     totalVotes: Object.values(voteCounts).reduce((a, b) => a + b, 0),
