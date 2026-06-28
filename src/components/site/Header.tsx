@@ -2,6 +2,8 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { SearchBar } from "@/components/site/SearchBar";
+
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
