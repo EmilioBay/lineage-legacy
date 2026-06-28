@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
 import { ServerRankRow } from "@/components/site/ServerRankRow";
 
-type Accent = "brand" | "gold" | "success";
+type Accent = "brand" | "gold" | "success" | "accent";
 
 interface Server {
   id: string;
@@ -12,8 +12,9 @@ interface Server {
   chronicle: string;
   rates: string;
   first_seen_at: string;
-  votes: number;
+  votes?: number;
   top_rank_years?: number;
+  launch_date?: string | null;
 }
 
 interface RankingTableProps {
@@ -23,54 +24,84 @@ interface RankingTableProps {
   servers: Server[];
   emptyMessage?: string;
   sponsoredIds?: Set<string>;
+  showRank?: boolean;
+  showVotes?: boolean;
+  allSponsored?: boolean;
+  viewAllTo?: string;
+  extraHeader?: string;
+  rowExtra?: (s: Server) => React.ReactNode;
 }
 
 const headerAccent: Record<Accent, string> = {
-  brand: "border-brand/30 text-brand bg-brand/10",
-  gold: "border-gold/30 text-gold bg-gold/10",
+  brand:   "border-brand/30 text-brand bg-brand/10",
+  gold:    "border-gold/30 text-gold bg-gold/10",
   success: "border-success/30 text-success bg-success/10",
+  accent:  "border-accent/30 text-accent bg-accent/10",
 };
 
-export function RankingTable({ accent, title, yearBadge, servers, emptyMessage, sponsoredIds }: RankingTableProps) {
-  const headerClass = headerAccent[accent];
+const dotAccent: Record<Accent, string> = {
+  brand: "bg-brand",
+  gold: "bg-gold",
+  success: "bg-success",
+  accent: "bg-accent",
+};
 
+export function RankingTable({
+  accent,
+  title,
+  yearBadge,
+  servers,
+  emptyMessage,
+  sponsoredIds,
+  showRank = true,
+  showVotes = true,
+  allSponsored = false,
+  viewAllTo = "/browse",
+  extraHeader,
+  rowExtra,
+}: RankingTableProps) {
   return (
-    <section className="space-y-3">
+    <section className="space-y-2">
       <div className="flex items-center justify-between">
-        <h2 className="text-base font-bold text-white flex items-center gap-2">
-          <span className={cn("size-2 rounded-full", accent === "brand" ? "bg-brand" : accent === "gold" ? "bg-gold" : "bg-success")} />
+        <h2 className="text-sm font-bold text-white flex items-center gap-2 uppercase tracking-wider">
+          <span className={cn("size-2 rounded-full", dotAccent[accent])} />
           {title}
           {yearBadge && (
-            <span className={cn("text-[10px] px-2 py-0.5 rounded border uppercase font-mono", headerClass)}>
+            <span className={cn("text-[10px] px-2 py-0.5 rounded border uppercase font-mono", headerAccent[accent])}>
               {yearBadge}
             </span>
           )}
         </h2>
-        <Link to="/browse" className="text-xs text-muted-foreground hover:text-brand transition-colors">
-          View All
+        <Link to={viewAllTo} className="text-[11px] text-muted-foreground hover:text-brand transition-colors">
+          View All →
         </Link>
       </div>
 
       {servers.length === 0 ? (
-        <div className="text-center py-8 border border-dashed border-border rounded-xl">
-          <p className="text-muted-foreground text-sm">{emptyMessage ?? "No servers listed."}</p>
+        <div className="text-center py-6 border border-dashed border-border rounded-lg">
+          <p className="text-muted-foreground text-xs">{emptyMessage ?? "No servers listed."}</p>
         </div>
       ) : (
-        <div className="border border-border rounded-xl overflow-hidden">
-          <div className="grid grid-cols-[36px_1fr_72px_28px] gap-2 px-3 py-2 bg-background/40 border-b border-border text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
-            <span>#</span>
-            <span>Server</span>
-            <span className="text-right">Votes</span>
-            <span className="text-center">Trust</span>
+        <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
+          <div className="flex items-center gap-2 px-2.5 py-1.5 bg-background/60 border-b border-border text-[9px] uppercase tracking-wider text-muted-foreground/80 font-semibold">
+            {showRank && <span className="w-6 text-center">#</span>}
+            <span className="size-7 shrink-0" />
+            <span className="flex-1">Server</span>
+            {rowExtra && <span className="text-right shrink-0">{extraHeader}</span>}
+            {showVotes && <span className="w-14 text-right shrink-0">Votes</span>}
+            <span className="w-7 text-center shrink-0">Trust</span>
           </div>
           <div className="divide-y divide-border">
             {servers.map((s, i) => (
               <ServerRankRow
                 key={s.id}
-                rank={i + 1}
+                rank={showRank ? i + 1 : undefined}
                 server={s}
                 accent={accent}
-                sponsored={sponsoredIds?.has(s.id)}
+                sponsored={allSponsored || sponsoredIds?.has(s.id)}
+                showRank={showRank}
+                showVotes={showVotes}
+                extra={rowExtra?.(s)}
               />
             ))}
           </div>
