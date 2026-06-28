@@ -40,7 +40,9 @@ export function Header() {
             )}
           </div>
         </div>
+        <SearchBar className="hidden md:block w-72 lg:w-96 mx-4" />
         <div className="flex items-center gap-3">
+
           {user ? (
             <>
               <Link to="/add-server" className="bg-brand hover:opacity-90 text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold transition-all">Add Server</Link>
