@@ -84,11 +84,26 @@ function ServerPage() {
     refetchInterval: 60_000,
   });
 
+  const [justVoted, setJustVoted] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
   const mutation = useMutation({
     mutationFn: async () => vote({ data: { server_id: id, fingerprint: getFingerprint() } }),
-    onSuccess: () => { toast.success("Vote counted."); refetch(); refetchCooldown(); },
+    onSuccess: () => {
+      toast.success("Your vote has been counted.");
+      setJustVoted(true);
+      refetch(); refetchCooldown();
+      setTimeout(() => setJustVoted(false), 8000);
+    },
     onError: (e: Error) => { toast.error(e.message); refetchCooldown(); },
   });
+
+  useEffect(() => {
+    if (cooldown?.can_vote === false) {
+      const t = setInterval(() => setNow(Date.now()), 1000);
+      return () => clearInterval(t);
+    }
+  }, [cooldown?.can_vote]);
 
   if (isLoading || !data) {
     return (
@@ -99,10 +114,21 @@ function ServerPage() {
     );
   }
 
-  const { server, nameHistory, domainHistory, yearly, stats, currentSeasonVotes, currentRank, similar } = data;
+  const { server, nameHistory, domainHistory, yearly, stats, currentSeasonVotes, lifetimeVotes, currentRank, similar } = data;
   const topRankYears = yearly.filter((y) => y.rank <= 10).length;
   const trust = getTrustBadge({ firstSeenAt: server.first_seen_at, topRankYears });
   const firstSeen = new Date(server.first_seen_at);
+  const serialLabel = server.serial_id ? `#${String(server.serial_id).padStart(6, "0")}` : "—";
+
+  function countdown(target: string) {
+    const ms = Math.max(0, new Date(target).getTime() - now);
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    const s = Math.floor((ms % 60_000) / 1000);
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+
+  const canVote = cooldown?.can_vote !== false;
 
   const VotePanel = () => (
     <div className="bg-gradient-to-b from-brand/20 via-brand/5 to-surface border border-brand/30 rounded-2xl p-5 shadow-xl">
@@ -115,19 +141,28 @@ function ServerPage() {
       )}
       <button
         onClick={() => mutation.mutate()}
-        disabled={mutation.isPending || cooldown?.can_vote === false}
-        className="mt-4 w-full bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-50 transition-opacity"
+        disabled={mutation.isPending || !canVote}
+        className="mt-4 w-full bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
       >
-        {mutation.isPending ? "Voting…" : "VOTE FOR THIS SERVER"}
+        {mutation.isPending ? "Voting…" : canVote ? "VOTE FOR THIS SERVER" : "VOTE ON COOLDOWN"}
       </button>
+
+      {justVoted && (
+        <div className="mt-3 flex items-center gap-2 bg-green-500/10 border border-green-500/40 text-green-400 rounded-lg px-3 py-2 text-xs font-semibold">
+          <CheckCircle2 className="size-4 shrink-0" />
+          <span>Your vote has been counted.</span>
+        </div>
+      )}
+
       <div className="text-[11px] text-muted-foreground mt-2.5 flex items-center justify-center gap-1 text-center">
         <Clock className="size-3 shrink-0" />
-        <span>
-          {cooldown?.can_vote === false && cooldown.next_vote_at
-            ? <>Next vote {new Date(cooldown.next_vote_at).toLocaleString()}</>
-            : <>You can vote now · 1 vote / 12h / IP</>}
-        </span>
+        {cooldown?.can_vote === false && cooldown.next_vote_at ? (
+          <span>Next vote in <span className="font-mono text-white tabular-nums">{countdown(cooldown.next_vote_at)}</span></span>
+        ) : (
+          <span>You can vote now · 1 vote / 12h / IP</span>
+        )}
       </div>
+
       <div className="mt-4 pt-4 border-t border-border/60 grid grid-cols-2 gap-2">
         <a href={server.website_url} target="_blank" rel="noreferrer"
            className="inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors">
@@ -139,6 +174,11 @@ function ServerPage() {
             <MessageCircle className="size-3.5" /> Discord
           </a>
         ) : <div />}
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="flex items-center gap-1"><Hash className="size-3" /> Server ID</span>
+        <span className="font-mono text-white/90">{serialLabel}</span>
       </div>
     </div>
   );
