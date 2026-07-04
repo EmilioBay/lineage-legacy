@@ -431,7 +431,7 @@ function ServerPage() {
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="size-5 text-muted-foreground" />
-                  <h2 className="text-lg font-bold text-white uppercase tracking-widest">Similar Servers</h2>
+                  <h2 className="text-lg font-bold text-white uppercase tracking-widest">You May Also Like</h2>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {similar.map((s) => (
