@@ -47,22 +47,54 @@ function StatCard({ label, value, sub, accent }: { label: string; value: React.R
   );
 }
 
+function linkify(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const rx = /(https?:\/\/[^\s]+)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = rx.exec(text))) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(
+      <a key={`l${i++}`} href={m[0]} target="_blank" rel="noreferrer" className="text-brand hover:underline break-all">{m[0]}</a>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function formatDescription(text: string) {
   const paragraphs = text.split(/\n{2,}|\r\n\r\n/).map((p) => p.trim()).filter(Boolean);
   return paragraphs.map((p, idx) => {
-    // Render bullets if a paragraph is a list
     const lines = p.split(/\n/).map((l) => l.trim()).filter(Boolean);
     const isList = lines.length > 1 && lines.every((l) => /^[-•*]\s+/.test(l));
     if (isList) {
       return (
-        <ul key={idx} className="list-disc list-inside space-y-1 text-foreground">
-          {lines.map((l, i) => <li key={i}>{l.replace(/^[-•*]\s+/, "")}</li>)}
+        <ul key={idx} className="list-disc list-inside space-y-1.5 text-foreground pl-1">
+          {lines.map((l, i) => <li key={i}>{linkify(l.replace(/^[-•*]\s+/, ""))}</li>)}
         </ul>
       );
     }
-    return <p key={idx} className="text-foreground leading-relaxed">{p}</p>;
+    return <p key={idx} className="text-foreground leading-relaxed">{linkify(p)}</p>;
   });
 }
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  brazil: "🇧🇷", russia: "🇷🇺", "united states": "🇺🇸", usa: "🇺🇸", spain: "🇪🇸", france: "🇫🇷",
+  germany: "🇩🇪", italy: "🇮🇹", poland: "🇵🇱", portugal: "🇵🇹", turkey: "🇹🇷", greece: "🇬🇷",
+  ukraine: "🇺🇦", romania: "🇷🇴", argentina: "🇦🇷", mexico: "🇲🇽", chile: "🇨🇱", peru: "🇵🇪",
+  colombia: "🇨🇴", "united kingdom": "🇬🇧", uk: "🇬🇧", netherlands: "🇳🇱", international: "🌐",
+  bulgaria: "🇧🇬", hungary: "🇭🇺", czechia: "🇨🇿", "czech republic": "🇨🇿", slovakia: "🇸🇰",
+  serbia: "🇷🇸", croatia: "🇭🇷", lithuania: "🇱🇹", latvia: "🇱🇻", estonia: "🇪🇪",
+  belarus: "🇧🇾", kazakhstan: "🇰🇿",
+};
+function countryFlag(country?: string | null) {
+  if (!country) return null;
+  const key = country.trim().toLowerCase();
+  return COUNTRY_FLAGS[key] ?? "🌐";
+}
+
 
 function ServerPage() {
   const { id } = Route.useParams();
