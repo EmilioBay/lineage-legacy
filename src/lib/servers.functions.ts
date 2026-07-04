@@ -140,17 +140,17 @@ export const getServerDetail = createServerFn({ method: "GET" })
 
     if (!server) return null;
 
-    const [{ data: nameHistory }, { data: domainHistory }, { data: yearly }, { data: stats }, { data: votes }, { data: allApproved }, { data: allVotes }] = await Promise.all([
+    const [{ data: nameHistory }, { data: domainHistory }, { data: yearly }, { data: stats }, { data: votes }, { data: allApproved }, { data: allVotes }, { count: lifetimeVotes }] = await Promise.all([
       sb.from("server_name_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
       sb.from("server_domain_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
-      sb.from("yearly_rankings").select("*").eq("server_id", data.id).order("year", { ascending: false }).limit(5),
+      sb.from("yearly_rankings").select("*").eq("server_id", data.id).order("year", { ascending: false }).limit(10),
       sb.from("server_stats").select("date, rank, votes").eq("server_id", data.id).order("date"),
       sb.from("votes").select("id").eq("server_id", data.id).eq("vote_year", currentYear),
       sb.from("servers").select("id, current_name, logo_url, chronicle, rates, first_seen_at, country").eq("status", "approved"),
       sb.from("votes").select("server_id").eq("vote_year", currentYear),
+      sb.from("votes").select("id", { count: "exact", head: true }).eq("server_id", data.id),
     ]);
 
-    // Compute current rank from vote tallies
     const tallies = (allVotes ?? []).reduce<Record<string, number>>((acc, v) => {
       acc[v.server_id] = (acc[v.server_id] ?? 0) + 1; return acc;
     }, {});
@@ -160,7 +160,6 @@ export const getServerDetail = createServerFn({ method: "GET" })
     const rankIdx = ranking.findIndex((r) => r.id === data.id);
     const currentRank = rankIdx >= 0 ? rankIdx + 1 : null;
 
-    // Similar servers: same chronicle, similar rates, exclude self
     const targetRate = parseInt(String(server.rates).replace(/[^0-9]/g, ""), 10) || 0;
     const similar = (allApproved ?? [])
       .filter((s) => s.id !== data.id && s.chronicle === server.chronicle)
@@ -169,7 +168,7 @@ export const getServerDetail = createServerFn({ method: "GET" })
         return { ...s, _diff: Math.abs(r - targetRate), votes: tallies[s.id] ?? 0 };
       })
       .sort((a, b) => a._diff - b._diff || b.votes - a.votes)
-      .slice(0, 6);
+      .slice(0, 4);
 
     return {
       server,
@@ -178,7 +177,9 @@ export const getServerDetail = createServerFn({ method: "GET" })
       yearly: yearly ?? [],
       stats: stats ?? [],
       currentSeasonVotes: votes?.length ?? 0,
+      lifetimeVotes: lifetimeVotes ?? 0,
       currentRank,
+      totalRanked: ranking.length,
       similar,
     };
   });
