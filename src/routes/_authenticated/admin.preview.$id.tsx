@@ -280,8 +280,19 @@ function AdminPreview() {
           <p className="text-sm text-muted-foreground">
             {noteMode === "changes_requested"
               ? "Explain what the owner must correct before this can be approved."
-              : "Optional — explain why this submission was rejected."}
+              : "Select a reason and (optionally) explain why this submission was rejected."}
           </p>
+          {noteMode === "rejected" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Reason</label>
+              <Select value={rejectReason} onValueChange={setRejectReason}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REJECT_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={6} maxLength={2000}
             placeholder="e.g. Logo is too low resolution. Please upload at least 256×256." />
           <DialogFooter>
@@ -290,7 +301,11 @@ function AdminPreview() {
               onClick={() => {
                 if (!noteMode) return;
                 if (noteMode === "changes_requested" && noteText.trim().length < 5) { toast.error("Please write a short explanation."); return; }
-                mutation.mutate({ status: noteMode, moderator_note: noteText.trim() || undefined });
+                mutation.mutate({
+                  status: noteMode,
+                  moderator_note: noteText.trim() || undefined,
+                  reject_reason: noteMode === "rejected" ? rejectReason : undefined,
+                });
               }}
               disabled={mutation.isPending}
             >
