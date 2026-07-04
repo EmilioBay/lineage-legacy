@@ -91,6 +91,10 @@ function AdminPreview() {
 
   const { server, nameHistory, domainHistory, yearly, stats, currentSeasonVotes } = data;
   const trust = getTrustBadge(server.first_seen_at);
+  if (!notesDirty && adminNotes !== (server.admin_notes ?? "")) {
+    // sync on first load / after refetch
+    setAdminNotes(server.admin_notes ?? "");
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -102,6 +106,7 @@ function AdminPreview() {
           <div className="text-accent font-semibold">
             👁️ Admin Preview · Status:{" "}
             <span className="font-mono uppercase">{server.status.replace("_", " ")}</span>
+            {server.owner_email && <span className="ml-3 text-muted-foreground font-normal">Owner: <span className="text-white/90">{server.owner_email}</span></span>}
           </div>
           <div className="flex gap-2 items-center flex-wrap">
             <Link to="/admin" className="text-brand hover:underline text-xs">← Back</Link>
@@ -115,16 +120,32 @@ function AdminPreview() {
               </Button>
             )}
             {server.status !== "rejected" && (
-              <Button size="sm" variant="destructive" onClick={() => { setNoteMode("rejected"); setNoteText(server.moderator_note ?? ""); }}>Reject</Button>
+              <Button size="sm" variant="destructive" onClick={() => { setNoteMode("rejected"); setNoteText(server.moderator_note ?? ""); setRejectReason(server.reject_reason ?? "Website offline"); }}>Reject</Button>
+            )}
+            {server.status === "approved" && (
+              <Button size="sm" variant="outline" onClick={() => mutation.mutate({ status: "suspended" })} disabled={mutation.isPending}>Suspend</Button>
             )}
           </div>
         </div>
         {server.moderator_note && (
-          <div className="max-w-6xl mx-auto px-6 pb-3 text-xs text-yellow-300/90">
-            <span className="font-semibold">Current moderator note:</span> {server.moderator_note}
+          <div className="max-w-6xl mx-auto px-6 pb-2 text-xs text-yellow-300/90">
+            <span className="font-semibold">Owner-visible note:</span> {server.moderator_note}
+            {server.reject_reason && <span className="ml-2 text-destructive/90">· Reason: {server.reject_reason}</span>}
           </div>
         )}
+        <div className="max-w-6xl mx-auto px-6 pb-3 flex items-start gap-2">
+          <Textarea
+            value={adminNotes}
+            onChange={(e) => { setAdminNotes(e.target.value); setNotesDirty(true); }}
+            rows={2}
+            maxLength={2000}
+            placeholder="Private admin notes (never shown to owner)…"
+            className="text-xs bg-background/60 border-yellow-500/20"
+          />
+          <Button size="sm" variant="outline" disabled={!notesDirty || notesMutation.isPending} onClick={() => notesMutation.mutate()}>Save notes</Button>
+        </div>
       </div>
+
 
       {server.banner_url && (
         <div className="w-full h-48 md:h-64 overflow-hidden border-b border-border">
