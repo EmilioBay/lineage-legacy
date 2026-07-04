@@ -7,11 +7,21 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import { adminGetServerDetail, adminSetServerStatus } from "@/lib/servers.functions";
+import { adminGetServerDetail, adminSetServerStatus, adminUpdateAdminNotes } from "@/lib/servers.functions";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const REJECT_REASONS = [
+  "Website offline",
+  "Duplicate server",
+  "Fake information",
+  "Missing information",
+  "Rule violation",
+  "Other",
+];
 
 export const Route = createFileRoute("/_authenticated/admin/preview/$id")({
   head: () => ({ meta: [{ title: "Preview Submission — L2Index Admin" }] }),
@@ -23,6 +33,7 @@ function AdminPreview() {
   const navigate = useNavigate();
   const fetch = useServerFn(adminGetServerDetail);
   const setStatus = useServerFn(adminSetServerStatus);
+  const updateNotes = useServerFn(adminUpdateAdminNotes);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin-server-preview", id],
@@ -35,9 +46,12 @@ function AdminPreview() {
 
   const [noteMode, setNoteMode] = useState<"changes_requested" | "rejected" | null>(null);
   const [noteText, setNoteText] = useState("");
+  const [rejectReason, setRejectReason] = useState("Website offline");
+  const [adminNotes, setAdminNotes] = useState<string>("");
+  const [notesDirty, setNotesDirty] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: async (v: { status: "approved" | "rejected" | "changes_requested" | "suspended"; moderator_note?: string }) =>
+    mutationFn: async (v: { status: "approved" | "rejected" | "changes_requested" | "suspended"; moderator_note?: string; reject_reason?: string }) =>
       setStatus({ data: { id, ...v } }),
     onSuccess: (_, v) => {
       toast.success(`Marked as ${v.status.replace("_", " ")}`);
@@ -45,6 +59,12 @@ function AdminPreview() {
       refetch();
       if (v.status === "approved") navigate({ to: "/admin" });
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const notesMutation = useMutation({
+    mutationFn: async () => updateNotes({ data: { id, admin_notes: adminNotes.trim() || null } }),
+    onSuccess: () => { toast.success("Admin notes saved"); setNotesDirty(false); refetch(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
