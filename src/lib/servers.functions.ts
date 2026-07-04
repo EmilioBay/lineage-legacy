@@ -454,7 +454,7 @@ export const updateServer = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// ----- Admin: list all pending servers -----
+// ----- Admin: list all servers (with owner email) -----
 export const adminListServers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -462,7 +462,19 @@ export const adminListServers = createServerFn({ method: "GET" })
     if (!isAdmin) throw new Error("Forbidden");
     const { data, error } = await context.supabase.from("servers").select("*").order("created_at", { ascending: false });
     if (error) throw new Error(error.message);
-    return data ?? [];
+    const rows = data ?? [];
+
+    // Enrich with owner emails
+    const ownerIds = Array.from(new Set(rows.map((r) => r.owner_id).filter((x): x is string => !!x)));
+    const owners: Record<string, string> = {};
+    if (ownerIds.length) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      await Promise.all(ownerIds.map(async (uid) => {
+        const { data: u } = await supabaseAdmin.auth.admin.getUserById(uid);
+        if (u?.user?.email) owners[uid] = u.user.email;
+      }));
+    }
+    return rows.map((r) => ({ ...r, owner_email: r.owner_id ? owners[r.owner_id] ?? null : null }));
   });
 
 export const adminSetServerStatus = createServerFn({ method: "POST" })
@@ -471,17 +483,40 @@ export const adminSetServerStatus = createServerFn({ method: "POST" })
     id: z.string().uuid(),
     status: z.enum(["pending", "approved", "rejected", "suspended", "changes_requested"]),
     moderator_note: z.string().trim().max(2000).optional(),
+    reject_reason: z.string().trim().max(100).optional(),
   }).parse(d))
   .handler(async ({ data, context }) => {
     const { data: isAdmin } = await context.supabase.rpc("has_role" as never, { _user_id: context.userId, _role: "admin" } as never);
     if (!isAdmin) throw new Error("Forbidden");
-    const update: { status: typeof data.status; moderator_note?: string | null } = { status: data.status };
+    const update: {
+      status: typeof data.status;
+      moderator_note?: string | null;
+      reject_reason?: string | null;
+    } = { status: data.status };
     if (data.status === "changes_requested" || data.status === "rejected") {
       update.moderator_note = data.moderator_note ?? null;
     } else if (data.status === "approved") {
       update.moderator_note = null;
+      update.reject_reason = null;
+    }
+    if (data.status === "rejected") {
+      update.reject_reason = data.reject_reason ?? null;
     }
     const { error } = await context.supabase.from("servers").update(update).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminUpdateAdminNotes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    id: z.string().uuid(),
+    admin_notes: z.string().trim().max(2000).nullable(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role" as never, { _user_id: context.userId, _role: "admin" } as never);
+    if (!isAdmin) throw new Error("Forbidden");
+    const { error } = await context.supabase.from("servers").update({ admin_notes: data.admin_notes || null }).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -499,12 +534,20 @@ export const adminGetServerDetail = createServerFn({ method: "GET" })
     const [{ data: nameHistory }, { data: domainHistory }, { data: yearly }, { data: stats }] = await Promise.all([
       context.supabase.from("server_name_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
       context.supabase.from("server_domain_history").select("*").eq("server_id", data.id).order("changed_at", { ascending: false }),
-      context.supabase.from("yearly_rankings").select("*").eq("server_id", data.id).order("year", { ascending: false }).limit(5),
+      context.supabase.from("yearly_rankings").select("*").eq("server_id", data.id).order("year", { ascending: false }).limit(10),
       context.supabase.from("server_stats").select("date, rank, votes").eq("server_id", data.id).order("date"),
     ]);
 
+    // Owner email
+    let owner_email: string | null = null;
+    if (server.owner_id) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(server.owner_id);
+      owner_email = u?.user?.email ?? null;
+    }
+
     return {
-      server,
+      server: { ...server, owner_email },
       nameHistory: nameHistory ?? [],
       domainHistory: domainHistory ?? [],
       yearly: yearly ?? [],
@@ -519,3 +562,4 @@ export const checkIsAdmin = createServerFn({ method: "GET" })
     const { data } = await context.supabase.rpc("has_role" as never, { _user_id: context.userId, _role: "admin" } as never);
     return { isAdmin: Boolean(data) };
   });
+
