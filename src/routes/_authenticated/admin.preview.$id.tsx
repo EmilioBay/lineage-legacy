@@ -7,11 +7,21 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "rec
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import { adminGetServerDetail, adminSetServerStatus } from "@/lib/servers.functions";
+import { adminGetServerDetail, adminSetServerStatus, adminUpdateAdminNotes } from "@/lib/servers.functions";
 import { getTrustBadge, badgeClasses } from "@/lib/trust";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+
+const REJECT_REASONS = [
+  "Website offline",
+  "Duplicate server",
+  "Fake information",
+  "Missing information",
+  "Rule violation",
+  "Other",
+];
 
 export const Route = createFileRoute("/_authenticated/admin/preview/$id")({
   head: () => ({ meta: [{ title: "Preview Submission — L2Index Admin" }] }),
@@ -23,6 +33,7 @@ function AdminPreview() {
   const navigate = useNavigate();
   const fetch = useServerFn(adminGetServerDetail);
   const setStatus = useServerFn(adminSetServerStatus);
+  const updateNotes = useServerFn(adminUpdateAdminNotes);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ["admin-server-preview", id],
@@ -35,9 +46,12 @@ function AdminPreview() {
 
   const [noteMode, setNoteMode] = useState<"changes_requested" | "rejected" | null>(null);
   const [noteText, setNoteText] = useState("");
+  const [rejectReason, setRejectReason] = useState("Website offline");
+  const [adminNotes, setAdminNotes] = useState<string>("");
+  const [notesDirty, setNotesDirty] = useState(false);
 
   const mutation = useMutation({
-    mutationFn: async (v: { status: "approved" | "rejected" | "changes_requested" | "suspended"; moderator_note?: string }) =>
+    mutationFn: async (v: { status: "approved" | "rejected" | "changes_requested" | "suspended"; moderator_note?: string; reject_reason?: string }) =>
       setStatus({ data: { id, ...v } }),
     onSuccess: (_, v) => {
       toast.success(`Marked as ${v.status.replace("_", " ")}`);
@@ -45,6 +59,12 @@ function AdminPreview() {
       refetch();
       if (v.status === "approved") navigate({ to: "/admin" });
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const notesMutation = useMutation({
+    mutationFn: async () => updateNotes({ data: { id, admin_notes: adminNotes.trim() || null } }),
+    onSuccess: () => { toast.success("Admin notes saved"); setNotesDirty(false); refetch(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -71,6 +91,10 @@ function AdminPreview() {
 
   const { server, nameHistory, domainHistory, yearly, stats, currentSeasonVotes } = data;
   const trust = getTrustBadge(server.first_seen_at);
+  if (!notesDirty && adminNotes !== (server.admin_notes ?? "")) {
+    // sync on first load / after refetch
+    setAdminNotes(server.admin_notes ?? "");
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -82,6 +106,7 @@ function AdminPreview() {
           <div className="text-accent font-semibold">
             👁️ Admin Preview · Status:{" "}
             <span className="font-mono uppercase">{server.status.replace("_", " ")}</span>
+            {server.owner_email && <span className="ml-3 text-muted-foreground font-normal">Owner: <span className="text-white/90">{server.owner_email}</span></span>}
           </div>
           <div className="flex gap-2 items-center flex-wrap">
             <Link to="/admin" className="text-brand hover:underline text-xs">← Back</Link>
@@ -95,16 +120,32 @@ function AdminPreview() {
               </Button>
             )}
             {server.status !== "rejected" && (
-              <Button size="sm" variant="destructive" onClick={() => { setNoteMode("rejected"); setNoteText(server.moderator_note ?? ""); }}>Reject</Button>
+              <Button size="sm" variant="destructive" onClick={() => { setNoteMode("rejected"); setNoteText(server.moderator_note ?? ""); setRejectReason(server.reject_reason ?? "Website offline"); }}>Reject</Button>
+            )}
+            {server.status === "approved" && (
+              <Button size="sm" variant="outline" onClick={() => mutation.mutate({ status: "suspended" })} disabled={mutation.isPending}>Suspend</Button>
             )}
           </div>
         </div>
         {server.moderator_note && (
-          <div className="max-w-6xl mx-auto px-6 pb-3 text-xs text-yellow-300/90">
-            <span className="font-semibold">Current moderator note:</span> {server.moderator_note}
+          <div className="max-w-6xl mx-auto px-6 pb-2 text-xs text-yellow-300/90">
+            <span className="font-semibold">Owner-visible note:</span> {server.moderator_note}
+            {server.reject_reason && <span className="ml-2 text-destructive/90">· Reason: {server.reject_reason}</span>}
           </div>
         )}
+        <div className="max-w-6xl mx-auto px-6 pb-3 flex items-start gap-2">
+          <Textarea
+            value={adminNotes}
+            onChange={(e) => { setAdminNotes(e.target.value); setNotesDirty(true); }}
+            rows={2}
+            maxLength={2000}
+            placeholder="Private admin notes (never shown to owner)…"
+            className="text-xs bg-background/60 border-yellow-500/20"
+          />
+          <Button size="sm" variant="outline" disabled={!notesDirty || notesMutation.isPending} onClick={() => notesMutation.mutate()}>Save notes</Button>
+        </div>
       </div>
+
 
       {server.banner_url && (
         <div className="w-full h-48 md:h-64 overflow-hidden border-b border-border">
@@ -239,8 +280,19 @@ function AdminPreview() {
           <p className="text-sm text-muted-foreground">
             {noteMode === "changes_requested"
               ? "Explain what the owner must correct before this can be approved."
-              : "Optional — explain why this submission was rejected."}
+              : "Select a reason and (optionally) explain why this submission was rejected."}
           </p>
+          {noteMode === "rejected" && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Reason</label>
+              <Select value={rejectReason} onValueChange={setRejectReason}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {REJECT_REASONS.map((r) => <SelectItem key={r} value={r}>{r}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           <Textarea value={noteText} onChange={(e) => setNoteText(e.target.value)} rows={6} maxLength={2000}
             placeholder="e.g. Logo is too low resolution. Please upload at least 256×256." />
           <DialogFooter>
@@ -249,7 +301,11 @@ function AdminPreview() {
               onClick={() => {
                 if (!noteMode) return;
                 if (noteMode === "changes_requested" && noteText.trim().length < 5) { toast.error("Please write a short explanation."); return; }
-                mutation.mutate({ status: noteMode, moderator_note: noteText.trim() || undefined });
+                mutation.mutate({
+                  status: noteMode,
+                  moderator_note: noteText.trim() || undefined,
+                  reject_reason: noteMode === "rejected" ? rejectReason : undefined,
+                });
               }}
               disabled={mutation.isPending}
             >

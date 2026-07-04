@@ -1,9 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users } from "lucide-react";
+import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users, CheckCircle2, Hash, Award } from "lucide-react";
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -46,22 +47,54 @@ function StatCard({ label, value, sub, accent }: { label: string; value: React.R
   );
 }
 
+function linkify(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const rx = /(https?:\/\/[^\s]+)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = rx.exec(text))) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(
+      <a key={`l${i++}`} href={m[0]} target="_blank" rel="noreferrer" className="text-brand hover:underline break-all">{m[0]}</a>
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 function formatDescription(text: string) {
   const paragraphs = text.split(/\n{2,}|\r\n\r\n/).map((p) => p.trim()).filter(Boolean);
   return paragraphs.map((p, idx) => {
-    // Render bullets if a paragraph is a list
     const lines = p.split(/\n/).map((l) => l.trim()).filter(Boolean);
     const isList = lines.length > 1 && lines.every((l) => /^[-•*]\s+/.test(l));
     if (isList) {
       return (
-        <ul key={idx} className="list-disc list-inside space-y-1 text-foreground">
-          {lines.map((l, i) => <li key={i}>{l.replace(/^[-•*]\s+/, "")}</li>)}
+        <ul key={idx} className="list-disc list-inside space-y-1.5 text-foreground pl-1">
+          {lines.map((l, i) => <li key={i}>{linkify(l.replace(/^[-•*]\s+/, ""))}</li>)}
         </ul>
       );
     }
-    return <p key={idx} className="text-foreground leading-relaxed">{p}</p>;
+    return <p key={idx} className="text-foreground leading-relaxed">{linkify(p)}</p>;
   });
 }
+
+const COUNTRY_FLAGS: Record<string, string> = {
+  brazil: "🇧🇷", russia: "🇷🇺", "united states": "🇺🇸", usa: "🇺🇸", spain: "🇪🇸", france: "🇫🇷",
+  germany: "🇩🇪", italy: "🇮🇹", poland: "🇵🇱", portugal: "🇵🇹", turkey: "🇹🇷", greece: "🇬🇷",
+  ukraine: "🇺🇦", romania: "🇷🇴", argentina: "🇦🇷", mexico: "🇲🇽", chile: "🇨🇱", peru: "🇵🇪",
+  colombia: "🇨🇴", "united kingdom": "🇬🇧", uk: "🇬🇧", netherlands: "🇳🇱", international: "🌐",
+  bulgaria: "🇧🇬", hungary: "🇭🇺", czechia: "🇨🇿", "czech republic": "🇨🇿", slovakia: "🇸🇰",
+  serbia: "🇷🇸", croatia: "🇭🇷", lithuania: "🇱🇹", latvia: "🇱🇻", estonia: "🇪🇪",
+  belarus: "🇧🇾", kazakhstan: "🇰🇿",
+};
+function countryFlag(country?: string | null) {
+  if (!country) return null;
+  const key = country.trim().toLowerCase();
+  return COUNTRY_FLAGS[key] ?? "🌐";
+}
+
 
 function ServerPage() {
   const { id } = Route.useParams();
@@ -84,11 +117,26 @@ function ServerPage() {
     refetchInterval: 60_000,
   });
 
+  const [justVoted, setJustVoted] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+
   const mutation = useMutation({
     mutationFn: async () => vote({ data: { server_id: id, fingerprint: getFingerprint() } }),
-    onSuccess: () => { toast.success("Vote counted."); refetch(); refetchCooldown(); },
+    onSuccess: () => {
+      toast.success("Your vote has been counted.");
+      setJustVoted(true);
+      refetch(); refetchCooldown();
+      setTimeout(() => setJustVoted(false), 8000);
+    },
     onError: (e: Error) => { toast.error(e.message); refetchCooldown(); },
   });
+
+  useEffect(() => {
+    if (cooldown?.can_vote === false) {
+      const t = setInterval(() => setNow(Date.now()), 1000);
+      return () => clearInterval(t);
+    }
+  }, [cooldown?.can_vote]);
 
   if (isLoading || !data) {
     return (
@@ -99,10 +147,21 @@ function ServerPage() {
     );
   }
 
-  const { server, nameHistory, domainHistory, yearly, stats, currentSeasonVotes, currentRank, similar } = data;
+  const { server, nameHistory, domainHistory, yearly, stats, currentSeasonVotes, lifetimeVotes, currentRank, similar } = data;
   const topRankYears = yearly.filter((y) => y.rank <= 10).length;
   const trust = getTrustBadge({ firstSeenAt: server.first_seen_at, topRankYears });
   const firstSeen = new Date(server.first_seen_at);
+  const serialLabel = server.serial_id ? `#${String(server.serial_id).padStart(6, "0")}` : "—";
+
+  function countdown(target: string) {
+    const ms = Math.max(0, new Date(target).getTime() - now);
+    const h = Math.floor(ms / 3_600_000);
+    const m = Math.floor((ms % 3_600_000) / 60_000);
+    const s = Math.floor((ms % 60_000) / 1000);
+    return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
+  }
+
+  const canVote = cooldown?.can_vote !== false;
 
   const VotePanel = () => (
     <div className="bg-gradient-to-b from-brand/20 via-brand/5 to-surface border border-brand/30 rounded-2xl p-5 shadow-xl">
@@ -115,19 +174,28 @@ function ServerPage() {
       )}
       <button
         onClick={() => mutation.mutate()}
-        disabled={mutation.isPending || cooldown?.can_vote === false}
-        className="mt-4 w-full bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-50 transition-opacity"
+        disabled={mutation.isPending || !canVote}
+        className="mt-4 w-full bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
       >
-        {mutation.isPending ? "Voting…" : "VOTE FOR THIS SERVER"}
+        {mutation.isPending ? "Voting…" : canVote ? "VOTE FOR THIS SERVER" : "VOTE ON COOLDOWN"}
       </button>
+
+      {justVoted && (
+        <div className="mt-3 flex items-center gap-2 bg-green-500/10 border border-green-500/40 text-green-400 rounded-lg px-3 py-2 text-xs font-semibold">
+          <CheckCircle2 className="size-4 shrink-0" />
+          <span>Your vote has been counted.</span>
+        </div>
+      )}
+
       <div className="text-[11px] text-muted-foreground mt-2.5 flex items-center justify-center gap-1 text-center">
         <Clock className="size-3 shrink-0" />
-        <span>
-          {cooldown?.can_vote === false && cooldown.next_vote_at
-            ? <>Next vote {new Date(cooldown.next_vote_at).toLocaleString()}</>
-            : <>You can vote now · 1 vote / 12h / IP</>}
-        </span>
+        {cooldown?.can_vote === false && cooldown.next_vote_at ? (
+          <span>Next vote in <span className="font-mono text-white tabular-nums">{countdown(cooldown.next_vote_at)}</span></span>
+        ) : (
+          <span>You can vote now · 1 vote / 12h / IP</span>
+        )}
       </div>
+
       <div className="mt-4 pt-4 border-t border-border/60 grid grid-cols-2 gap-2">
         <a href={server.website_url} target="_blank" rel="noreferrer"
            className="inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors">
@@ -139,6 +207,11 @@ function ServerPage() {
             <MessageCircle className="size-3.5" /> Discord
           </a>
         ) : <div />}
+      </div>
+
+      <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
+        <span className="flex items-center gap-1"><Hash className="size-3" /> Server ID</span>
+        <span className="font-mono text-white/90">{serialLabel}</span>
       </div>
     </div>
   );
@@ -180,7 +253,7 @@ function ServerPage() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3 flex-wrap">
                 <span className="font-mono bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">{server.chronicle}</span>
                 <span className="font-mono bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">x{String(server.rates).replace(/^x/i, "")}</span>
-                {server.country && <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">{server.country}</span>}
+                {server.country && <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border inline-flex items-center gap-1.5"><span className="text-base leading-none">{countryFlag(server.country)}</span>{server.country}</span>}
                 {server.server_type && <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">{server.server_type}</span>}
                 <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border font-mono">{server.domain}</span>
               </div>
@@ -215,22 +288,47 @@ function ServerPage() {
               <StatCard
                 label="Years Listed"
                 value={trust.years}
-                sub={`${trust.label} tier`}
+                sub={`${topRankYears} top-10 finishes`}
                 accent="bg-accent"
               />
               <StatCard
-                label="Current Rank"
+                label="Season Rank"
                 value={currentRank ? `#${currentRank}` : "—"}
                 sub={`Season ${new Date().getFullYear()}`}
                 accent="bg-brand"
               />
               <StatCard
-                label="Top-10 Years"
-                value={topRankYears}
-                sub="Historical finishes"
+                label="Season Votes"
+                value={currentSeasonVotes.toLocaleString()}
+                sub="Current year"
+                accent="bg-brand"
+              />
+              <StatCard
+                label="Lifetime Votes"
+                value={lifetimeVotes.toLocaleString()}
+                sub="Since first listed"
+                accent="bg-accent"
+              />
+              <StatCard
+                label="Trust Level"
+                value={<span className="inline-flex items-center gap-1.5"><Award className="size-5" /> {trust.label}</span>}
+                sub={`${trust.years} yr / ${topRankYears} top-10`}
+                accent="bg-accent"
+              />
+              <StatCard
+                label="Server ID"
+                value={<span className="font-mono">{serialLabel}</span>}
+                sub="Permanent identifier"
+                accent="bg-brand"
+              />
+              <StatCard
+                label="Chronicle"
+                value={<span className="font-mono">{server.chronicle}</span>}
+                sub={`x${String(server.rates).replace(/^x/i, "")} rates`}
                 accent="bg-accent"
               />
             </section>
+
 
             {/* About */}
             <section>
@@ -256,49 +354,57 @@ function ServerPage() {
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="bg-surface border border-border rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     <History className="size-4 text-muted-foreground" />
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Previous Names</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Name Timeline</h3>
                   </div>
-                  {nameHistory.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">No name changes — always operated as <span className="text-white not-italic font-medium">{server.current_name}</span>.</p>
-                  ) : (
-                    <ul className="space-y-2.5 text-sm">
-                      {nameHistory.map((n) => (
-                        <li key={n.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                          <div>
-                            <span className="line-through text-muted-foreground">{n.old_name}</span>
-                            <span className="mx-1.5 text-muted-foreground">→</span>
-                            <span className="text-white font-medium">{n.new_name}</span>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground whitespace-nowrap pt-0.5">{new Date(n.changed_at).toLocaleDateString()}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <ol className="relative border-l border-border/60 ml-2 space-y-4">
+                    <li className="pl-4 relative">
+                      <span className="absolute -left-[7px] top-1 size-3 rounded-full bg-brand ring-4 ring-brand/20" />
+                      <div className="text-sm text-white font-semibold">{server.current_name}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Current · since {new Date(nameHistory[0]?.changed_at ?? server.first_seen_at).toLocaleDateString()}</div>
+                    </li>
+                    {nameHistory.map((n, i) => (
+                      <li key={n.id} className="pl-4 relative">
+                        <span className="absolute -left-[6px] top-1.5 size-2.5 rounded-full bg-muted-foreground/50" />
+                        <div className="text-sm text-foreground/80 line-through">{n.old_name}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Renamed → <span className="text-white/90 no-underline">{n.new_name}</span> · {new Date(n.changed_at).toLocaleDateString()}
+                          {i === nameHistory.length - 1 && <span className="ml-1">(original)</span>}
+                        </div>
+                      </li>
+                    ))}
+                    {nameHistory.length === 0 && (
+                      <li className="pl-4 text-xs text-muted-foreground italic">Never renamed — always operated under this name.</li>
+                    )}
+                  </ol>
                 </div>
 
                 <div className="bg-surface border border-border rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     <Globe className="size-4 text-muted-foreground" />
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Previous Domains</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Domain Timeline</h3>
                   </div>
-                  {domainHistory.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">No domain changes — always hosted at <span className="text-white not-italic font-medium">{server.domain}</span>.</p>
-                  ) : (
-                    <ul className="space-y-2.5 text-sm">
-                      {domainHistory.map((d) => (
-                        <li key={d.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                          <div>
-                            <span className="line-through text-muted-foreground font-mono text-xs">{d.old_domain}</span>
-                            <span className="mx-1.5 text-muted-foreground">→</span>
-                            <span className="text-white font-medium font-mono text-xs">{d.new_domain}</span>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground whitespace-nowrap pt-0.5">{new Date(d.changed_at).toLocaleDateString()}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <ol className="relative border-l border-border/60 ml-2 space-y-4">
+                    <li className="pl-4 relative">
+                      <span className="absolute -left-[7px] top-1 size-3 rounded-full bg-brand ring-4 ring-brand/20" />
+                      <div className="text-sm text-white font-mono">{server.domain}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Current domain</div>
+                    </li>
+                    {domainHistory.map((d, i) => (
+                      <li key={d.id} className="pl-4 relative">
+                        <span className="absolute -left-[6px] top-1.5 size-2.5 rounded-full bg-muted-foreground/50" />
+                        <div className="text-sm text-foreground/80 line-through font-mono text-xs">{d.old_domain}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Moved → <span className="text-white/90 font-mono">{d.new_domain}</span> · {new Date(d.changed_at).toLocaleDateString()}
+                          {i === domainHistory.length - 1 && <span className="ml-1">(original)</span>}
+                        </div>
+                      </li>
+                    ))}
+                    {domainHistory.length === 0 && (
+                      <li className="pl-4 text-xs text-muted-foreground italic">Never migrated — always hosted at this domain.</li>
+                    )}
+                  </ol>
                 </div>
               </div>
             </section>
@@ -365,7 +471,7 @@ function ServerPage() {
               <section>
                 <div className="flex items-center gap-2 mb-4">
                   <Users className="size-5 text-muted-foreground" />
-                  <h2 className="text-lg font-bold text-white uppercase tracking-widest">Similar Servers</h2>
+                  <h2 className="text-lg font-bold text-white uppercase tracking-widest">You May Also Like</h2>
                 </div>
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {similar.map((s) => (

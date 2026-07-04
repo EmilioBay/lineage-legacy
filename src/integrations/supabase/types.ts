@@ -156,6 +156,7 @@ export type Database = {
       }
       servers: {
         Row: {
+          admin_notes: string | null
           banner_url: string | null
           chronicle: string
           country: string | null
@@ -171,12 +172,15 @@ export type Database = {
           moderator_note: string | null
           owner_id: string | null
           rates: string
+          reject_reason: string | null
+          serial_id: number
           server_type: string | null
           status: Database["public"]["Enums"]["server_status"]
           updated_at: string
           website_url: string
         }
         Insert: {
+          admin_notes?: string | null
           banner_url?: string | null
           chronicle: string
           country?: string | null
@@ -192,12 +196,15 @@ export type Database = {
           moderator_note?: string | null
           owner_id?: string | null
           rates: string
+          reject_reason?: string | null
+          serial_id?: number
           server_type?: string | null
           status?: Database["public"]["Enums"]["server_status"]
           updated_at?: string
           website_url: string
         }
         Update: {
+          admin_notes?: string | null
           banner_url?: string | null
           chronicle?: string
           country?: string | null
@@ -213,6 +220,8 @@ export type Database = {
           moderator_note?: string | null
           owner_id?: string | null
           rates?: string
+          reject_reason?: string | null
+          serial_id?: number
           server_type?: string | null
           status?: Database["public"]["Enums"]["server_status"]
           updated_at?: string
