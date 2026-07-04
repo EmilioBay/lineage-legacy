@@ -354,49 +354,57 @@ function ServerPage() {
               </div>
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="bg-surface border border-border rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     <History className="size-4 text-muted-foreground" />
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Previous Names</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Name Timeline</h3>
                   </div>
-                  {nameHistory.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">No name changes — always operated as <span className="text-white not-italic font-medium">{server.current_name}</span>.</p>
-                  ) : (
-                    <ul className="space-y-2.5 text-sm">
-                      {nameHistory.map((n) => (
-                        <li key={n.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                          <div>
-                            <span className="line-through text-muted-foreground">{n.old_name}</span>
-                            <span className="mx-1.5 text-muted-foreground">→</span>
-                            <span className="text-white font-medium">{n.new_name}</span>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground whitespace-nowrap pt-0.5">{new Date(n.changed_at).toLocaleDateString()}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <ol className="relative border-l border-border/60 ml-2 space-y-4">
+                    <li className="pl-4 relative">
+                      <span className="absolute -left-[7px] top-1 size-3 rounded-full bg-brand ring-4 ring-brand/20" />
+                      <div className="text-sm text-white font-semibold">{server.current_name}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Current · since {new Date(nameHistory[0]?.changed_at ?? server.first_seen_at).toLocaleDateString()}</div>
+                    </li>
+                    {nameHistory.map((n, i) => (
+                      <li key={n.id} className="pl-4 relative">
+                        <span className="absolute -left-[6px] top-1.5 size-2.5 rounded-full bg-muted-foreground/50" />
+                        <div className="text-sm text-foreground/80 line-through">{n.old_name}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Renamed → <span className="text-white/90 no-underline">{n.new_name}</span> · {new Date(n.changed_at).toLocaleDateString()}
+                          {i === nameHistory.length - 1 && <span className="ml-1">(original)</span>}
+                        </div>
+                      </li>
+                    ))}
+                    {nameHistory.length === 0 && (
+                      <li className="pl-4 text-xs text-muted-foreground italic">Never renamed — always operated under this name.</li>
+                    )}
+                  </ol>
                 </div>
 
                 <div className="bg-surface border border-border rounded-xl p-5">
-                  <div className="flex items-center gap-2 mb-3">
+                  <div className="flex items-center gap-2 mb-4">
                     <Globe className="size-4 text-muted-foreground" />
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Previous Domains</h3>
+                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Domain Timeline</h3>
                   </div>
-                  {domainHistory.length === 0 ? (
-                    <p className="text-sm text-muted-foreground italic">No domain changes — always hosted at <span className="text-white not-italic font-medium">{server.domain}</span>.</p>
-                  ) : (
-                    <ul className="space-y-2.5 text-sm">
-                      {domainHistory.map((d) => (
-                        <li key={d.id} className="flex items-start justify-between gap-3 border-b border-border/40 pb-2 last:border-0 last:pb-0">
-                          <div>
-                            <span className="line-through text-muted-foreground font-mono text-xs">{d.old_domain}</span>
-                            <span className="mx-1.5 text-muted-foreground">→</span>
-                            <span className="text-white font-medium font-mono text-xs">{d.new_domain}</span>
-                          </div>
-                          <div className="text-[10px] text-muted-foreground whitespace-nowrap pt-0.5">{new Date(d.changed_at).toLocaleDateString()}</div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
+                  <ol className="relative border-l border-border/60 ml-2 space-y-4">
+                    <li className="pl-4 relative">
+                      <span className="absolute -left-[7px] top-1 size-3 rounded-full bg-brand ring-4 ring-brand/20" />
+                      <div className="text-sm text-white font-mono">{server.domain}</div>
+                      <div className="text-[10px] text-muted-foreground uppercase tracking-widest">Current domain</div>
+                    </li>
+                    {domainHistory.map((d, i) => (
+                      <li key={d.id} className="pl-4 relative">
+                        <span className="absolute -left-[6px] top-1.5 size-2.5 rounded-full bg-muted-foreground/50" />
+                        <div className="text-sm text-foreground/80 line-through font-mono text-xs">{d.old_domain}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                          Moved → <span className="text-white/90 font-mono">{d.new_domain}</span> · {new Date(d.changed_at).toLocaleDateString()}
+                          {i === domainHistory.length - 1 && <span className="ml-1">(original)</span>}
+                        </div>
+                      </li>
+                    ))}
+                    {domainHistory.length === 0 && (
+                      <li className="pl-4 text-xs text-muted-foreground italic">Never migrated — always hosted at this domain.</li>
+                    )}
+                  </ol>
                 </div>
               </div>
             </section>
