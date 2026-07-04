@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users, CheckCircle2, Hash, Award, Vote as VoteIcon } from "lucide-react";
+import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users, CheckCircle2, Hash, Award } from "lucide-react";
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
