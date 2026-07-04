@@ -253,7 +253,7 @@ function ServerPage() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground mt-3 flex-wrap">
                 <span className="font-mono bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">{server.chronicle}</span>
                 <span className="font-mono bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">x{String(server.rates).replace(/^x/i, "")}</span>
-                {server.country && <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">{server.country}</span>}
+                {server.country && <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border inline-flex items-center gap-1.5"><span className="text-base leading-none">{countryFlag(server.country)}</span>{server.country}</span>}
                 {server.server_type && <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border">{server.server_type}</span>}
                 <span className="bg-surface/80 backdrop-blur px-2.5 py-1 rounded border border-border font-mono">{server.domain}</span>
               </div>
