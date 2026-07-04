@@ -256,22 +256,47 @@ function ServerPage() {
               <StatCard
                 label="Years Listed"
                 value={trust.years}
-                sub={`${trust.label} tier`}
+                sub={`${topRankYears} top-10 finishes`}
                 accent="bg-accent"
               />
               <StatCard
-                label="Current Rank"
+                label="Season Rank"
                 value={currentRank ? `#${currentRank}` : "—"}
                 sub={`Season ${new Date().getFullYear()}`}
                 accent="bg-brand"
               />
               <StatCard
-                label="Top-10 Years"
-                value={topRankYears}
-                sub="Historical finishes"
+                label="Season Votes"
+                value={currentSeasonVotes.toLocaleString()}
+                sub="Current year"
+                accent="bg-brand"
+              />
+              <StatCard
+                label="Lifetime Votes"
+                value={lifetimeVotes.toLocaleString()}
+                sub="Since first listed"
+                accent="bg-accent"
+              />
+              <StatCard
+                label="Trust Level"
+                value={<span className="inline-flex items-center gap-1.5"><Award className="size-5" /> {trust.label}</span>}
+                sub={`${trust.years} yr / ${topRankYears} top-10`}
+                accent="bg-accent"
+              />
+              <StatCard
+                label="Server ID"
+                value={<span className="font-mono">{serialLabel}</span>}
+                sub="Permanent identifier"
+                accent="bg-brand"
+              />
+              <StatCard
+                label="Chronicle"
+                value={<span className="font-mono">{server.chronicle}</span>}
+                sub={`x${String(server.rates).replace(/^x/i, "")} rates`}
                 accent="bg-accent"
               />
             </section>
+
 
             {/* About */}
             <section>
