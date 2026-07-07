@@ -53,11 +53,11 @@ function Home() {
 
       <WithSideRails>
         {/* Hero */}
-        <header className="py-10 px-6 max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-3">
+        <header className="py-8 px-6 max-w-7xl mx-auto text-center">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3">
             Find <span className="text-brand">Trusted</span> Lineage 2 Servers
           </h1>
-          <p className="text-base text-muted-foreground max-w-2xl mx-auto mb-6">
+          <p className="text-sm text-muted-foreground max-w-2xl mx-auto mb-5">
             The only Lineage 2 directory that preserves server history. No resets, no hidden rebrands — just transparent performance data over time.
           </p>
 
