@@ -38,11 +38,11 @@ export const Route = createFileRoute("/server/$id")({
 
 function StatCard({ label, value, sub, accent }: { label: string; value: React.ReactNode; sub?: React.ReactNode; accent?: string }) {
   return (
-    <div className="bg-surface border border-border rounded-xl p-4 relative overflow-hidden">
+    <div className="bg-surface border border-border rounded-xl p-3 relative overflow-hidden">
       {accent && <div className={`absolute inset-x-0 top-0 h-0.5 ${accent}`} />}
-      <div className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{label}</div>
-      <div className="text-2xl font-extrabold text-white mt-1.5 leading-tight">{value}</div>
-      {sub && <div className="text-[11px] text-muted-foreground mt-1">{sub}</div>}
+      <div className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{label}</div>
+      <div className="text-lg font-extrabold text-white mt-1 leading-tight">{value}</div>
+      {sub && <div className="text-[10px] text-muted-foreground mt-0.5">{sub}</div>}
     </div>
   );
 }
