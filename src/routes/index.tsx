@@ -134,7 +134,7 @@ function Home() {
 
           {/* Opening Soon */}
           {(data?.openingSoon?.length ?? 0) > 0 && (
-            <div className="mb-12">
+            <div className="mb-6">
               <RankingTable
                 accent="accent"
                 title="Opening Soon"
@@ -152,9 +152,9 @@ function Home() {
           )}
 
           {/* Why L2Index? — compact */}
-          <section className="mb-4">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
+          <section className="pt-2">
+            <div className="text-center mb-3">
+              <h2 className="text-lg font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
             </div>
             <div className="grid md:grid-cols-3 gap-3">
               {[
@@ -162,9 +162,9 @@ function Home() {
                 { t: "Verified Trust", d: "Badges earned from real listing age and ranking consistency." },
                 { t: "Fair Voting", d: "One vote per IP every 12 hours. No bot farms." },
               ].map((f) => (
-                <div key={f.t} className="bg-surface border border-border rounded-lg p-3">
-                  <h3 className="text-white font-bold text-sm mb-1">{f.t}</h3>
-                  <p className="text-xs text-muted-foreground">{f.d}</p>
+                <div key={f.t} className="bg-surface border border-border rounded-lg p-2.5">
+                  <h3 className="text-white font-bold text-sm mb-0.5">{f.t}</h3>
+                  <p className="text-[11px] text-muted-foreground">{f.d}</p>
                 </div>
               ))}
             </div>
