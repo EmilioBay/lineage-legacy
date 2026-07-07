@@ -19,6 +19,7 @@ import { Route as AboutRouteImport } from './routes/about'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ServerIdRouteImport } from './routes/server.$id'
+import { Route as AuthenticatedPromoteRouteImport } from './routes/_authenticated/promote'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedAddServerRouteImport } from './routes/_authenticated/add-server'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
@@ -73,6 +74,11 @@ const ServerIdRoute = ServerIdRouteImport.update({
   path: '/server/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedPromoteRoute = AuthenticatedPromoteRouteImport.update({
+  id: '/promote',
+  path: '/promote',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
@@ -106,6 +112,7 @@ export interface FileRoutesByFullPath {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/add-server': typeof AuthenticatedAddServerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/promote': typeof AuthenticatedPromoteRoute
   '/server/$id': typeof ServerIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/preview/$id': typeof AuthenticatedAdminPreviewIdRoute
@@ -121,6 +128,7 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/add-server': typeof AuthenticatedAddServerRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/promote': typeof AuthenticatedPromoteRoute
   '/server/$id': typeof ServerIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/preview/$id': typeof AuthenticatedAdminPreviewIdRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/_authenticated/add-server': typeof AuthenticatedAddServerRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/promote': typeof AuthenticatedPromoteRoute
   '/server/$id': typeof ServerIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/preview/$id': typeof AuthenticatedAdminPreviewIdRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/add-server'
     | '/dashboard'
+    | '/promote'
     | '/server/$id'
     | '/admin/'
     | '/admin/preview/$id'
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/add-server'
     | '/dashboard'
+    | '/promote'
     | '/server/$id'
     | '/admin'
     | '/admin/preview/$id'
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/_authenticated/add-server'
     | '/_authenticated/dashboard'
+    | '/_authenticated/promote'
     | '/server/$id'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/preview/$id'
@@ -276,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServerIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/promote': {
+      id: '/_authenticated/promote'
+      path: '/promote'
+      fullPath: '/promote'
+      preLoaderRoute: typeof AuthenticatedPromoteRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
@@ -310,6 +329,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAddServerRoute: typeof AuthenticatedAddServerRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedPromoteRoute: typeof AuthenticatedPromoteRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminPreviewIdRoute: typeof AuthenticatedAdminPreviewIdRoute
 }
@@ -317,6 +337,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAddServerRoute: AuthenticatedAddServerRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedPromoteRoute: AuthenticatedPromoteRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminPreviewIdRoute: AuthenticatedAdminPreviewIdRoute,
 }
@@ -339,13 +360,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

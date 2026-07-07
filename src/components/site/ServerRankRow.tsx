@@ -23,6 +23,7 @@ interface ServerRankRowProps {
   showRank?: boolean;
   showVotes?: boolean;
   extra?: React.ReactNode;
+  highlightPalette?: "green" | "blue";
 }
 
 const accentMap: Record<Accent, { border: string; text: string; focus: string }> = {
@@ -40,6 +41,7 @@ export function ServerRankRow({
   showRank = true,
   showVotes = true,
   extra,
+  highlightPalette,
 }: ServerRankRowProps) {
   const navigate = useNavigate();
   const a = accentMap[accent];
@@ -48,6 +50,22 @@ export function ServerRankRow({
   function open() {
     navigate({ to: "/server/$id", params: { id: server.id } });
   }
+
+  const highlightBg = (() => {
+    if (!highlightPalette || rank === undefined || rank > 3) return "";
+    const tiers =
+      highlightPalette === "green"
+        ? ["bg-success/20", "bg-success/10", "bg-success/[0.06]"]
+        : ["bg-brand/20", "bg-brand/10", "bg-brand/[0.06]"];
+    return tiers[rank - 1];
+  })();
+
+  const highlightText =
+    highlightPalette && rank !== undefined && rank <= 3
+      ? highlightPalette === "green"
+        ? "text-success"
+        : "text-brand"
+      : "";
 
   return (
     <div
@@ -61,7 +79,8 @@ export function ServerRankRow({
         }
       }}
       className={cn(
-        "group flex items-center gap-2 px-2.5 py-1.5 bg-surface border-l-[3px] hover:bg-surface-hover transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset",
+        "group flex items-center gap-2 px-2.5 py-1.5 border-l-[3px] hover:bg-surface-hover transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset",
+        highlightBg || "bg-surface",
         a.border,
         a.focus,
       )}
@@ -70,7 +89,7 @@ export function ServerRankRow({
         <span
           className={cn(
             "w-5 text-center font-black tabular-nums text-[11px] leading-none shrink-0",
-            isTop ? a.text : "text-muted-foreground/60",
+            highlightText || (isTop ? a.text : "text-muted-foreground/60"),
           )}
         >
           {rank ?? ""}

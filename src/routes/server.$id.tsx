@@ -469,39 +469,40 @@ function ServerPage() {
             {/* Similar servers */}
             {similar && similar.length > 0 && (
               <section>
-                <div className="flex items-center gap-2 mb-4">
-                  <Users className="size-5 text-muted-foreground" />
-                  <h2 className="text-lg font-bold text-white uppercase tracking-widest">You May Also Like</h2>
+                <div className="flex items-center gap-2 mb-3">
+                  <Users className="size-4 text-muted-foreground" />
+                  <h2 className="text-xs font-bold text-white uppercase tracking-widest">You May Also Like</h2>
                 </div>
-                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                   {similar.map((s) => (
                     <Link
                       key={s.id}
                       to="/server/$id"
                       params={{ id: s.id }}
-                      className="group flex items-center gap-3 bg-surface border border-border hover:border-brand/50 hover:bg-surface/70 rounded-xl p-3 transition-colors"
+                      className="group flex items-center gap-2 bg-surface border border-border hover:border-brand/50 hover:bg-surface/70 rounded-lg p-2 transition-colors"
                     >
-                      <div className="size-12 rounded-lg bg-background border border-border overflow-hidden grid place-items-center shrink-0">
+                      <div className="size-8 rounded bg-background border border-border overflow-hidden grid place-items-center shrink-0">
                         {s.logo_url
                           ? <img src={s.logo_url} alt="" className="size-full object-cover" />
-                          : <span className="font-mono text-xs text-muted-foreground">{s.current_name.slice(0,2).toUpperCase()}</span>}
+                          : <span className="font-mono text-[9px] text-muted-foreground">{s.current_name.slice(0,2).toUpperCase()}</span>}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-bold text-white truncate group-hover:text-brand transition-colors">{s.current_name}</div>
-                        <div className="text-[11px] text-muted-foreground truncate">
+                        <div className="text-[12px] font-semibold text-white truncate group-hover:text-brand transition-colors">{s.current_name}</div>
+                        <div className="text-[9px] text-muted-foreground truncate">
                           {s.chronicle} · x{String(s.rates).replace(/^x/i, "")}
                           {s.country ? ` · ${s.country}` : ""}
                         </div>
                       </div>
                       <div className="text-right shrink-0">
-                        <div className="font-mono text-sm font-bold text-white">{s.votes.toLocaleString()}</div>
-                        <div className="text-[9px] uppercase tracking-widest text-muted-foreground">votes</div>
+                        <div className="font-mono text-[11px] font-bold text-white leading-none">{s.votes.toLocaleString()}</div>
+                        <div className="text-[8px] uppercase tracking-widest text-muted-foreground mt-0.5">votes</div>
                       </div>
                     </Link>
                   ))}
                 </div>
               </section>
             )}
+
           </div>
 
           {/* Sticky sidebar */}
