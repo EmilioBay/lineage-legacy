@@ -110,6 +110,7 @@ function Home() {
               yearBadge={year}
               servers={data?.ranked ?? []}
               emptyMessage="No approved servers yet."
+              highlightPalette="green"
             />
 
             <RankingTable
@@ -118,6 +119,7 @@ function Home() {
               servers={data?.trusted ?? []}
               emptyMessage="Trust builds over time."
               showVotes={false}
+              highlightPalette="green"
             />
 
             <RankingTable
@@ -129,8 +131,10 @@ function Home() {
               showVotes={false}
               allSponsored
               viewAllTo="/advertising"
+              highlightPalette="blue"
             />
           </div>
+
 
           {/* Opening Soon */}
           {(data?.openingSoon?.length ?? 0) > 0 && (
