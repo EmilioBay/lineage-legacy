@@ -30,7 +30,9 @@ interface RankingTableProps {
   viewAllTo?: string;
   extraHeader?: string;
   rowExtra?: (s: Server) => React.ReactNode;
+  highlightPalette?: "green" | "blue";
 }
+
 
 const headerAccent: Record<Accent, string> = {
   brand:   "border-brand/30 text-brand bg-brand/10",
@@ -59,7 +61,9 @@ export function RankingTable({
   viewAllTo = "/browse",
   extraHeader,
   rowExtra,
+  highlightPalette,
 }: RankingTableProps) {
+
   return (
     <section className="space-y-2">
       <div className="flex items-center justify-between">
@@ -95,14 +99,16 @@ export function RankingTable({
             {servers.map((s, i) => (
               <ServerRankRow
                 key={s.id}
-                rank={showRank ? i + 1 : undefined}
+                rank={showRank ? i + 1 : i + 1}
                 server={s}
                 accent={accent}
                 sponsored={allSponsored || sponsoredIds?.has(s.id)}
                 showRank={showRank}
                 showVotes={showVotes}
                 extra={rowExtra?.(s)}
+                highlightPalette={highlightPalette}
               />
+
             ))}
           </div>
         </div>
