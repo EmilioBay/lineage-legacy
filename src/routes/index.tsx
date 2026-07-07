@@ -83,7 +83,7 @@ function Home() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-6 pb-24">
+        <main className="max-w-7xl mx-auto px-6 pb-16">
           {/* Sponsored banners */}
           {(data?.banners?.length ?? 0) > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
