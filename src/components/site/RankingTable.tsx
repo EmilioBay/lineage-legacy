@@ -83,13 +83,13 @@ export function RankingTable({
         </div>
       ) : (
         <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
-          <div className="flex items-center gap-2 px-2.5 py-1.5 bg-background/60 border-b border-border text-[9px] uppercase tracking-wider text-muted-foreground/80 font-semibold">
-            {showRank && <span className="w-6 text-center">#</span>}
-            <span className="size-7 shrink-0" />
+          <div className="flex items-center gap-2 px-2.5 py-1 bg-background/60 border-b border-border text-[9px] uppercase tracking-wider text-muted-foreground/80 font-semibold">
+            {showRank && <span className="w-5 text-center">#</span>}
+            <span className="size-6 shrink-0" />
             <span className="flex-1">Server</span>
-            {rowExtra && <span className="text-right shrink-0">{extraHeader}</span>}
-            {showVotes && <span className="w-14 text-right shrink-0">Votes</span>}
-            <span className="w-7 text-center shrink-0">Trust</span>
+            {rowExtra && <span className="w-12 text-right shrink-0">{extraHeader}</span>}
+            {showVotes && <span className="w-12 text-right shrink-0">Votes</span>}
+            <span className="w-6 text-center shrink-0">Trust</span>
           </div>
           <div className="divide-y divide-border">
             {servers.map((s, i) => (

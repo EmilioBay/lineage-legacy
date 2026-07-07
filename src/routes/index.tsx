@@ -53,11 +53,11 @@ function Home() {
 
       <WithSideRails>
         {/* Hero */}
-        <header className="py-10 px-6 max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-white tracking-tight mb-3">
+        <header className="py-8 px-6 max-w-7xl mx-auto text-center">
+          <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3">
             Find <span className="text-brand">Trusted</span> Lineage 2 Servers
           </h1>
-          <p className="text-base text-muted-foreground max-w-2xl mx-auto mb-6">
+          <p className="text-sm text-muted-foreground max-w-2xl mx-auto mb-5">
             The only Lineage 2 directory that preserves server history. No resets, no hidden rebrands — just transparent performance data over time.
           </p>
 
@@ -83,7 +83,7 @@ function Home() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-6 pb-24">
+        <main className="max-w-7xl mx-auto px-6 pb-16">
           {/* Sponsored banners */}
           {(data?.banners?.length ?? 0) > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -134,7 +134,7 @@ function Home() {
 
           {/* Opening Soon */}
           {(data?.openingSoon?.length ?? 0) > 0 && (
-            <div className="mb-12">
+            <div className="mb-6">
               <RankingTable
                 accent="accent"
                 title="Opening Soon"
@@ -152,9 +152,9 @@ function Home() {
           )}
 
           {/* Why L2Index? — compact */}
-          <section className="mb-4">
-            <div className="text-center mb-4">
-              <h2 className="text-xl font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
+          <section className="pt-2">
+            <div className="text-center mb-3">
+              <h2 className="text-lg font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
             </div>
             <div className="grid md:grid-cols-3 gap-3">
               {[
@@ -162,9 +162,9 @@ function Home() {
                 { t: "Verified Trust", d: "Badges earned from real listing age and ranking consistency." },
                 { t: "Fair Voting", d: "One vote per IP every 12 hours. No bot farms." },
               ].map((f) => (
-                <div key={f.t} className="bg-surface border border-border rounded-lg p-3">
-                  <h3 className="text-white font-bold text-sm mb-1">{f.t}</h3>
-                  <p className="text-xs text-muted-foreground">{f.d}</p>
+                <div key={f.t} className="bg-surface border border-border rounded-lg p-2.5">
+                  <h3 className="text-white font-bold text-sm mb-0.5">{f.t}</h3>
+                  <p className="text-[11px] text-muted-foreground">{f.d}</p>
                 </div>
               ))}
             </div>
