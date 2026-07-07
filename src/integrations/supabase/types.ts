@@ -19,30 +19,36 @@ export type Database = {
           created_at: string
           end_date: string
           id: string
+          owner_id: string | null
           payment_status: Database["public"]["Enums"]["payment_status"]
           position: number
           server_id: string
           start_date: string
+          token_cost: number
           type: Database["public"]["Enums"]["promotion_type"]
         }
         Insert: {
           created_at?: string
           end_date: string
           id?: string
+          owner_id?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           position?: number
           server_id: string
           start_date?: string
+          token_cost?: number
           type: Database["public"]["Enums"]["promotion_type"]
         }
         Update: {
           created_at?: string
           end_date?: string
           id?: string
+          owner_id?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"]
           position?: number
           server_id?: string
           start_date?: string
+          token_cost?: number
           type?: Database["public"]["Enums"]["promotion_type"]
         }
         Relationships: [
@@ -229,6 +235,44 @@ export type Database = {
         }
         Relationships: []
       }
+      token_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string | null
+          id: string
+          promotion_id: string | null
+          type: Database["public"]["Enums"]["token_txn_type"]
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          promotion_id?: string | null
+          type: Database["public"]["Enums"]["token_txn_type"]
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          promotion_id?: string | null
+          type?: Database["public"]["Enums"]["token_txn_type"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "token_transactions_promotion_id_fkey"
+            columns: ["promotion_id"]
+            isOneToOne: false
+            referencedRelation: "promotions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -246,6 +290,27 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_tokens: {
+        Row: {
+          balance: number
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
@@ -322,6 +387,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_token_promotion: {
+        Args: {
+          _cost: number
+          _days: number
+          _server_id: string
+          _type: Database["public"]["Enums"]["promotion_type"]
+        }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -344,6 +418,7 @@ export type Database = {
         | "rejected"
         | "suspended"
         | "changes_requested"
+      token_txn_type: "purchase" | "spend" | "refund" | "bonus" | "adjustment"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -481,6 +556,7 @@ export const Constants = {
         "suspended",
         "changes_requested",
       ],
+      token_txn_type: ["purchase", "spend", "refund", "bonus", "adjustment"],
     },
   },
 } as const
