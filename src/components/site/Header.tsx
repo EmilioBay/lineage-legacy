@@ -36,8 +36,12 @@ export function Header() {
             <Link to="/about" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">About Us</Link>
             <Link to="/contact" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">Contact Us</Link>
             {user && (
-              <Link to="/dashboard" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">Dashboard</Link>
+              <>
+                <Link to="/dashboard" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">Dashboard</Link>
+                <Link to="/promote" activeProps={{ className: "text-white" }} className="hover:text-white transition-colors">Advertising</Link>
+              </>
             )}
+
           </div>
         </div>
         <SearchBar className="hidden md:block w-72 lg:w-96 mx-4" />
