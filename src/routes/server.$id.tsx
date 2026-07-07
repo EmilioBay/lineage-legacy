@@ -164,53 +164,53 @@ function ServerPage() {
   const canVote = cooldown?.can_vote !== false;
 
   const VotePanel = () => (
-    <div className="bg-gradient-to-b from-brand/20 via-brand/5 to-surface border border-brand/30 rounded-2xl p-5 shadow-xl">
-      <div className="text-[10px] font-bold text-brand uppercase tracking-widest text-center">Season Votes</div>
-      <div className="text-4xl font-extrabold text-white font-mono mt-1 text-center tabular-nums">{currentSeasonVotes.toLocaleString()}</div>
+    <div className="bg-gradient-to-b from-brand/20 via-brand/5 to-surface border border-brand/30 rounded-2xl p-4 shadow-xl">
+      <div className="text-[9px] font-bold text-brand uppercase tracking-widest text-center">Season Votes</div>
+      <div className="text-3xl font-extrabold text-white font-mono mt-0.5 text-center tabular-nums">{currentSeasonVotes.toLocaleString()}</div>
       {currentRank && (
-        <div className="text-[11px] text-muted-foreground text-center mt-0.5">
-          Currently ranked <span className="text-white font-semibold">#{currentRank}</span>
+        <div className="text-[10px] text-muted-foreground text-center">
+          Ranked <span className="text-white font-semibold">#{currentRank}</span>
         </div>
       )}
       <button
         onClick={() => mutation.mutate()}
         disabled={mutation.isPending || !canVote}
-        className="mt-4 w-full bg-brand text-brand-foreground px-6 py-3 rounded-lg font-bold text-base hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
+        className="mt-3 w-full bg-brand text-brand-foreground px-4 py-2.5 rounded-lg font-bold text-sm hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed transition-opacity"
       >
         {mutation.isPending ? "Voting…" : canVote ? "VOTE FOR THIS SERVER" : "VOTE ON COOLDOWN"}
       </button>
 
       {justVoted && (
-        <div className="mt-3 flex items-center gap-2 bg-green-500/10 border border-green-500/40 text-green-400 rounded-lg px-3 py-2 text-xs font-semibold">
-          <CheckCircle2 className="size-4 shrink-0" />
-          <span>Your vote has been counted.</span>
+        <div className="mt-2 flex items-center gap-1.5 bg-green-500/10 border border-green-500/40 text-green-400 rounded-lg px-2.5 py-1.5 text-[11px] font-semibold">
+          <CheckCircle2 className="size-3.5 shrink-0" />
+          <span>Vote counted.</span>
         </div>
       )}
 
-      <div className="text-[11px] text-muted-foreground mt-2.5 flex items-center justify-center gap-1 text-center">
+      <div className="text-[10px] text-muted-foreground mt-2 flex items-center justify-center gap-1 text-center">
         <Clock className="size-3 shrink-0" />
         {cooldown?.can_vote === false && cooldown.next_vote_at ? (
-          <span>Next vote in <span className="font-mono text-white tabular-nums">{countdown(cooldown.next_vote_at)}</span></span>
+          <span>Next in <span className="font-mono text-white tabular-nums">{countdown(cooldown.next_vote_at)}</span></span>
         ) : (
-          <span>You can vote now · 1 vote / 12h / IP</span>
+          <span>1 vote / 12h / IP</span>
         )}
       </div>
 
-      <div className="mt-4 pt-4 border-t border-border/60 grid grid-cols-2 gap-2">
+      <div className="mt-3 pt-3 border-t border-border/60 grid grid-cols-2 gap-2">
         <a href={server.website_url} target="_blank" rel="noreferrer"
-           className="inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors">
-          <Globe className="size-3.5" /> Website
+           className="inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors">
+          <Globe className="size-3" /> Website
         </a>
         {server.discord_url ? (
           <a href={server.discord_url} target="_blank" rel="noreferrer"
-             className="inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-xs font-semibold transition-colors">
-            <MessageCircle className="size-3.5" /> Discord
+             className="inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors">
+            <MessageCircle className="size-3" /> Discord
           </a>
         ) : <div />}
       </div>
 
-      <div className="mt-3 pt-3 border-t border-border/60 flex items-center justify-between text-[10px] uppercase tracking-widest text-muted-foreground">
-        <span className="flex items-center gap-1"><Hash className="size-3" /> Server ID</span>
+      <div className="mt-2.5 pt-2.5 border-t border-border/60 flex items-center justify-between text-[9px] uppercase tracking-widest text-muted-foreground">
+        <span className="flex items-center gap-1"><Hash className="size-3" /> ID</span>
         <span className="font-mono text-white/90">{serialLabel}</span>
       </div>
     </div>
