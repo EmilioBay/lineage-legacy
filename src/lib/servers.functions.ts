@@ -233,22 +233,34 @@ export const listServers = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const sb = publicClient();
     const currentYear = new Date().getFullYear();
-    let query = sb.from("servers").select("id, current_name, logo_url, chronicle, rates, first_seen_at, domain").eq("status", "approved");
-    if (data.q && data.q.trim()) {
-      const term = `%${data.q.trim()}%`;
-      // Search current name & domain
-      query = query.or(`current_name.ilike.${term},domain.ilike.${term}`);
-    }
-    const { data: servers } = await query.limit(100);
+    const q = data.q?.trim();
 
-    // For name-history search, fetch matching server ids too
+    let query = sb
+      .from("servers")
+      .select("id, current_name, logo_url, chronicle, rates, first_seen_at, domain, country, launch_date, server_type")
+      .eq("status", "approved");
+
+    if (q) {
+      const term = `%${q}%`;
+      // Search current name, domain, chronicle, rates
+      query = query.or(
+        `current_name.ilike.${term},domain.ilike.${term},chronicle.ilike.${term},rates.ilike.${term}`,
+      );
+    }
+    const { data: servers } = await query.limit(500);
+
+    // For name/domain history search, fetch matching server ids too
     let extraIds: string[] = [];
-    if (data.q && data.q.trim()) {
-      const { data: nh } = await sb
-        .from("server_name_history")
-        .select("server_id")
-        .ilike("old_name", `%${data.q.trim()}%`);
-      extraIds = (nh ?? []).map((r) => r.server_id);
+    if (q) {
+      const term = `%${q}%`;
+      const [{ data: nh }, { data: dh }] = await Promise.all([
+        sb.from("server_name_history").select("server_id").ilike("old_name", term),
+        sb.from("server_domain_history").select("server_id").ilike("old_domain", term),
+      ]);
+      extraIds = [
+        ...((nh ?? []).map((r) => r.server_id)),
+        ...((dh ?? []).map((r) => r.server_id)),
+      ];
     }
 
     let combined = servers ?? [];
@@ -258,7 +270,7 @@ export const listServers = createServerFn({ method: "GET" })
       if (missing.length) {
         const { data: more } = await sb
           .from("servers")
-          .select("id, current_name, logo_url, chronicle, rates, first_seen_at, domain")
+          .select("id, current_name, logo_url, chronicle, rates, first_seen_at, domain, country, launch_date, server_type")
           .eq("status", "approved")
           .in("id", missing);
         combined = combined.concat(more ?? []);
@@ -267,17 +279,25 @@ export const listServers = createServerFn({ method: "GET" })
 
     const ids = combined.map((s) => s.id);
     let voteCounts: Record<string, number> = {};
+    let topRankYears: Record<string, number> = {};
     if (ids.length) {
-      const { data: votes } = await sb
-        .from("votes")
-        .select("server_id")
-        .eq("vote_year", currentYear)
-        .in("server_id", ids);
+      const [{ data: votes }, { data: yr }] = await Promise.all([
+        sb.from("votes").select("server_id").eq("vote_year", currentYear).in("server_id", ids),
+        sb.from("yearly_rankings").select("server_id, rank").in("server_id", ids).lte("rank", 10),
+      ]);
       voteCounts = (votes ?? []).reduce<Record<string, number>>((acc, v) => {
         acc[v.server_id] = (acc[v.server_id] ?? 0) + 1; return acc;
       }, {});
+      topRankYears = (yr ?? []).reduce<Record<string, number>>((acc, r) => {
+        acc[r.server_id] = (acc[r.server_id] ?? 0) + 1; return acc;
+      }, {});
     }
-    return combined.map((s) => ({ ...s, votes: voteCounts[s.id] ?? 0 }))
+    return combined
+      .map((s) => ({
+        ...s,
+        votes: voteCounts[s.id] ?? 0,
+        top_rank_years: topRankYears[s.id] ?? 0,
+      }))
       .sort((a, b) => b.votes - a.votes);
   });
 
