@@ -411,7 +411,13 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       payment_status: "pending" | "paid" | "cancelled"
-      promotion_type: "banner" | "sponsored_new" | "spotlight"
+      promotion_type:
+        | "banner"
+        | "sponsored_new"
+        | "spotlight"
+        | "banner_left"
+        | "banner_right"
+        | "sponsored"
       server_status:
         | "pending"
         | "approved"
@@ -548,7 +554,14 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       payment_status: ["pending", "paid", "cancelled"],
-      promotion_type: ["banner", "sponsored_new", "spotlight"],
+      promotion_type: [
+        "banner",
+        "sponsored_new",
+        "spotlight",
+        "banner_left",
+        "banner_right",
+        "sponsored",
+      ],
       server_status: [
         "pending",
         "approved",
