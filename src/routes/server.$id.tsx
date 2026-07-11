@@ -121,6 +121,28 @@ function ServerPage() {
 
   const [justVoted, setJustVoted] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [userId, setUserId] = useState<string | null>(null);
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [claimMsg, setClaimMsg] = useState("");
+  const claimStatusFn = useServerFn(getOwnershipClaimStatus);
+  const createClaimFn = useServerFn(createOwnershipClaim);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+
+  const { data: claimStatus, refetch: refetchClaim } = useQuery({
+    queryKey: ["ownership-claim", id, userId],
+    queryFn: () => claimStatusFn({ data: { server_id: id } }),
+    enabled: !!userId,
+  });
+
+  const claimMut = useMutation({
+    mutationFn: (message: string) => createClaimFn({ data: { server_id: id, message } }),
+    onSuccess: () => { toast.success("Ownership claim submitted"); setClaimOpen(false); setClaimMsg(""); refetchClaim(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const mutation = useMutation({
     mutationFn: async () => vote({ data: { server_id: id, fingerprint: getFingerprint() } }),
