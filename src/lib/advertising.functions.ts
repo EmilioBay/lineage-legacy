@@ -242,13 +242,13 @@ export const adminUpdatePricing = createServerFn({ method: "POST" })
   .inputValidator((d: unknown) => updatePricingInput.parse(d))
   .handler(async ({ data, context }) => {
     await assertAdmin(context.supabase, context.userId);
-    const patch: Record<string, unknown> = {
+    const patch = {
       cost_per_day: data.cost_per_day,
       updated_at: new Date().toISOString(),
+      ...(data.name !== undefined ? { name: data.name } : {}),
+      ...(data.description !== undefined ? { description: data.description } : {}),
+      ...(data.exclusive !== undefined ? { exclusive: data.exclusive } : {}),
     };
-    if (data.name !== undefined) patch.name = data.name;
-    if (data.description !== undefined) patch.description = data.description;
-    if (data.exclusive !== undefined) patch.exclusive = data.exclusive;
     const { error } = await context.supabase.from("promotion_pricing").update(patch).eq("type", data.type);
     if (error) throw new Error(error.message);
     return { ok: true };
