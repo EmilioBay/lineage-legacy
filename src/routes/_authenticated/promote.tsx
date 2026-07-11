@@ -1,33 +1,39 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { toast } from "sonner";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import {
   getAdvertisingDashboard,
   createTokenPromotion,
-  PROMOTION_TYPES,
+  renewPromotion,
+  CREDIT_PACKAGES,
   type PromotionType,
 } from "@/lib/advertising.functions";
 
 export const Route = createFileRoute("/_authenticated/promote")({
   head: () => ({
     meta: [
-      { title: "Advertising Dashboard — L2Index" },
-      { name: "description", content: "Promote your Lineage 2 server on L2Index using tokens." },
+      { title: "Advertising — L2Index" },
+      { name: "description", content: "Promote your Lineage 2 server on L2Index using Index Credits." },
     ],
   }),
   component: PromotePage,
 });
 
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleDateString();
+function fmtDate(iso: string) { return new Date(iso).toLocaleDateString(); }
+function fmtDateTime(iso: string) { return new Date(iso).toLocaleString(); }
+function daysUntil(iso: string) {
+  const ms = new Date(iso).getTime() - Date.now();
+  return Math.max(0, Math.ceil(ms / 86_400_000));
 }
 
 function PromotePage() {
   const fetchDashboard = useServerFn(getAdvertisingDashboard);
   const createPromo = useServerFn(createTokenPromotion);
+  const renewPromo = useServerFn(renewPromotion);
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -35,22 +41,36 @@ function PromotePage() {
     queryFn: () => fetchDashboard(),
   });
 
-  const [showModal, setShowModal] = useState(false);
+  const [buyOpen, setBuyOpen] = useState(false);
+  const [promoModal, setPromoModal] = useState<{ type: PromotionType; name: string; costPerDay: number } | null>(null);
+  const [renewModal, setRenewModal] = useState<{ id: string; server_name: string; type: string; costPerDay: number } | null>(null);
   const [serverId, setServerId] = useState("");
-  const [promoType, setPromoType] = useState<PromotionType>("banner");
   const [days, setDays] = useState(7);
-  const [error, setError] = useState<string | null>(null);
+  const [renewDays, setRenewDays] = useState(7);
 
-  const mut = useMutation({
-    mutationFn: (input: { server_id: string; type: PromotionType; days: number }) =>
-      createPromo({ data: input }),
+  const createMut = useMutation({
+    mutationFn: (input: { server_id: string; type: PromotionType; days: number }) => createPromo({ data: input }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["advertising-dashboard"] });
-      setShowModal(false);
-      setError(null);
+      toast.success("Promotion activated");
+      setPromoModal(null);
     },
-    onError: (e: Error) => setError(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
+
+  const renewMut = useMutation({
+    mutationFn: (input: { promotion_id: string; days: number }) => renewPromo({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["advertising-dashboard"] });
+      toast.success("Promotion renewed");
+      setRenewModal(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const active = useMemo(() => (data?.promotions ?? []).filter((p) => p.is_active), [data]);
+  const pending = useMemo(() => (data?.promotions ?? []).filter((p) => p.is_pending), [data]);
+  const history = useMemo(() => (data?.promotions ?? []).filter((p) => !p.is_active && !p.is_pending), [data]);
 
   if (isLoading) {
     return (
@@ -69,17 +89,11 @@ function PromotePage() {
       <div className="min-h-screen bg-background text-foreground">
         <Header />
         <main className="max-w-2xl mx-auto px-6 py-20 text-center">
-          <h1 className="text-3xl font-extrabold text-white mb-3">Advertising Dashboard</h1>
+          <h1 className="text-3xl font-extrabold text-white mb-3">Advertising</h1>
           <div className="bg-surface border border-border rounded-xl p-8">
             <p className="text-white font-semibold mb-2">You need at least one approved server</p>
-            <p className="text-muted-foreground text-sm mb-6">
-              The advertising dashboard is available for server owners with an approved listing.
-              Submit your server for moderation to unlock promotions.
-            </p>
-            <Link
-              to="/add-server"
-              className="inline-block bg-brand text-brand-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition"
-            >
+            <p className="text-muted-foreground text-sm mb-6">Advertising is available to server owners with an approved listing.</p>
+            <Link to="/add-server" className="inline-block bg-brand text-brand-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition">
               Add Your Server
             </Link>
           </div>
@@ -89,103 +103,155 @@ function PromotePage() {
     );
   }
 
-  const selectedPrice = PROMOTION_TYPES.find((p) => p.value === promoType)!;
-  const totalCost = selectedPrice.costPerDay * days;
-  const canAfford = d.balance >= totalCost;
-
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
-      <main className="max-w-6xl mx-auto px-6 py-10 space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
+      <main className="max-w-6xl mx-auto px-6 py-8 space-y-6">
+        {/* Top bar */}
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-extrabold text-white">Advertising Dashboard</h1>
-            <p className="text-sm text-muted-foreground">Promote your servers using tokens.</p>
-          </div>
-          <button
-            disabled
-            title="Payments coming soon"
-            className="bg-surface border border-border text-muted-foreground px-4 py-2 rounded-lg text-sm font-semibold cursor-not-allowed opacity-60"
-          >
-            Buy Tokens (coming soon)
-          </button>
-        </div>
-
-        {/* Balance */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <div className="bg-surface border border-brand/30 rounded-xl p-5">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Token Balance</div>
-            <div className="text-3xl font-black text-brand">{d.balance.toLocaleString()}</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Available for promotions</div>
-          </div>
-          <div className="bg-surface border border-border rounded-xl p-5">
-            <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Approved Servers</div>
-            <div className="text-3xl font-black text-white">{d.approvedServers.length}</div>
-            <div className="text-[11px] text-muted-foreground mt-1">Eligible to promote</div>
-          </div>
-          <div className="bg-surface border border-border rounded-xl p-5 flex flex-col justify-between">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mb-1">Promote</div>
-              <div className="text-xs text-muted-foreground">Spend tokens to feature a server.</div>
-            </div>
-            <button
-              onClick={() => {
-                setServerId(d.approvedServers[0]?.id ?? "");
-                setShowModal(true);
-              }}
-              className="mt-3 bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition"
-            >
-              Promote Server
-            </button>
+            <h1 className="text-2xl font-extrabold text-white">Advertising</h1>
+            <p className="text-xs text-muted-foreground">Promote your servers using Index Credits.</p>
           </div>
         </div>
 
-        {/* My Servers */}
+        {/* Summary strip */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="bg-surface border border-brand/30 rounded-lg p-3">
+            <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">Index Credits</div>
+            <div className="text-2xl font-black text-brand mt-0.5">{d.balance.toLocaleString()}</div>
+            <button onClick={() => setBuyOpen(true)} className="mt-1.5 text-[11px] font-semibold text-brand hover:underline">+ Buy Credits</button>
+          </div>
+          <StatBox label="Eligible Servers" value={d.approvedServers.length} />
+          <StatBox label="Active Promotions" value={active.length} />
+          <StatBox label="Pending" value={pending.length} />
+        </div>
+
+        {/* Promotion slots */}
         <section>
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-2">My Servers</h2>
-          <div className="border border-border rounded-lg overflow-hidden bg-surface/30 divide-y divide-border">
-            {d.servers.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 px-3 py-2">
-                <div className="size-8 rounded bg-background border border-border overflow-hidden grid place-items-center shrink-0">
-                  {s.logo_url
-                    ? <img src={s.logo_url} alt="" className="size-full object-cover" />
-                    : <span className="text-[9px] font-mono text-muted-foreground">{s.current_name.slice(0,2).toUpperCase()}</span>}
+          <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-2">Promotion Slots</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            {d.pricing.map((p) => {
+              const slot = d.slotState[p.type];
+              const occupied = p.exclusive && slot?.occupied;
+              return (
+                <div key={p.type} className={`relative bg-surface border rounded-lg p-4 flex flex-col ${occupied ? "border-border/60 opacity-80" : "border-border hover:border-brand/40 transition-colors"}`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-bold text-white">{p.name}</h3>
+                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                      occupied ? "border-accent/40 text-accent bg-accent/10" : "border-success/40 text-success bg-success/10"
+                    }`}>{occupied ? "Occupied" : "Available"}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-1 flex-1">{p.description}</p>
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
+                    <div className="text-[10px] text-muted-foreground">Cost</div>
+                    <div className="text-sm font-mono text-brand font-bold">{p.cost_per_day} / day</div>
+                  </div>
+                  {occupied && slot?.next_available ? (
+                    <div className="mt-2 text-[10px] text-muted-foreground">Next available: <span className="text-white font-mono">{fmtDate(slot.next_available)}</span></div>
+                  ) : (
+                    <button
+                      onClick={() => { setPromoModal({ type: p.type as PromotionType, name: p.name, costPerDay: p.cost_per_day }); setServerId(d.approvedServers[0]?.id ?? ""); setDays(7); }}
+                      className="mt-2 w-full bg-brand text-brand-foreground text-xs font-semibold py-1.5 rounded hover:opacity-90 transition"
+                    >
+                      Promote
+                    </button>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-white font-semibold truncate">{s.current_name}</div>
-                  <div className="text-[10px] text-muted-foreground">{s.chronicle} · x{String(s.rates).replace(/^x/i, "")}</div>
-                </div>
-                <span className={`text-[10px] uppercase font-bold px-2 py-0.5 rounded border ${
-                  s.status === "approved" ? "border-success/30 text-success bg-success/10" :
-                  s.status === "pending"  ? "border-accent/30 text-accent bg-accent/10" :
-                  "border-border text-muted-foreground bg-white/5"
-                }`}>{s.status}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 
-        {/* Promotion History */}
+        {/* Current promotions */}
         <section>
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-2">Promotion History</h2>
-          {d.promotions.length === 0 ? (
-            <div className="text-center py-6 border border-dashed border-border rounded-lg text-xs text-muted-foreground">No promotions yet.</div>
+          <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-2">Current Promotions</h2>
+          {active.length === 0 ? (
+            <div className="text-center py-5 border border-dashed border-border rounded-lg text-xs text-muted-foreground">No active promotions.</div>
           ) : (
             <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
               <table className="w-full text-sm">
                 <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-background/60">
                   <tr>
                     <th className="text-left px-3 py-2">Server</th>
-                    <th className="text-left px-3 py-2">Type</th>
+                    <th className="text-left px-3 py-2">Slot</th>
+                    <th className="text-left px-3 py-2">Expires</th>
+                    <th className="text-right px-3 py-2">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {active.map((p) => {
+                    const price = d.pricing.find((x) => x.type === p.type);
+                    return (
+                      <tr key={p.id}>
+                        <td className="px-3 py-2 text-white">{p.server_name}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">{price?.name ?? p.type}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(p.end_date)} <span className="text-white/50">({daysUntil(p.end_date)}d left)</span></td>
+                        <td className="px-3 py-2 text-right">
+                          {price && (
+                            <button
+                              onClick={() => setRenewModal({ id: p.id, server_name: p.server_name, type: price.name, costPerDay: price.cost_per_day })}
+                              className="text-[11px] font-semibold bg-brand/15 text-brand border border-brand/30 px-2 py-1 rounded hover:bg-brand/25 transition"
+                            >Renew</button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+
+        {/* Pending */}
+        {pending.length > 0 && (
+          <section>
+            <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-2">Pending Promotions</h2>
+            <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-background/60">
+                  <tr>
+                    <th className="text-left px-3 py-2">Server</th>
+                    <th className="text-left px-3 py-2">Slot</th>
+                    <th className="text-left px-3 py-2">Requested</th>
+                    <th className="text-right px-3 py-2">Cost</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {pending.map((p) => (
+                    <tr key={p.id}>
+                      <td className="px-3 py-2 text-white">{p.server_name}</td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">{p.type}</td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(p.created_at)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-accent">{p.token_cost}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {/* History */}
+        {history.length > 0 && (
+          <section>
+            <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-2">Promotion History</h2>
+            <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
+              <table className="w-full text-sm">
+                <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-background/60">
+                  <tr>
+                    <th className="text-left px-3 py-2">Server</th>
+                    <th className="text-left px-3 py-2">Slot</th>
                     <th className="text-left px-3 py-2">Period</th>
                     <th className="text-right px-3 py-2">Cost</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {d.promotions.map((p) => (
+                  {history.map((p) => (
                     <tr key={p.id}>
                       <td className="px-3 py-2 text-white">{p.server_name}</td>
-                      <td className="px-3 py-2 text-muted-foreground">{p.type}</td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">{p.type}</td>
                       <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(p.start_date)} → {fmtDate(p.end_date)}</td>
                       <td className="px-3 py-2 text-right font-mono text-brand">-{p.token_cost}</td>
                     </tr>
@@ -193,14 +259,14 @@ function PromotePage() {
                 </tbody>
               </table>
             </div>
-          )}
-        </section>
+          </section>
+        )}
 
-        {/* Token History */}
+        {/* Credit History */}
         <section>
-          <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-2">Token History</h2>
+          <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-2">Index Credit Activity</h2>
           {d.transactions.length === 0 ? (
-            <div className="text-center py-6 border border-dashed border-border rounded-lg text-xs text-muted-foreground">No token activity yet.</div>
+            <div className="text-center py-5 border border-dashed border-border rounded-lg text-xs text-muted-foreground">No activity yet.</div>
           ) : (
             <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
               <table className="w-full text-sm">
@@ -215,12 +281,10 @@ function PromotePage() {
                 <tbody className="divide-y divide-border">
                   {d.transactions.map((t) => (
                     <tr key={t.id}>
-                      <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDate(t.created_at)}</td>
+                      <td className="px-3 py-2 text-muted-foreground text-xs">{fmtDateTime(t.created_at)}</td>
                       <td className="px-3 py-2 text-muted-foreground">{t.type}</td>
                       <td className="px-3 py-2 text-muted-foreground text-xs">{t.description ?? ""}</td>
-                      <td className={`px-3 py-2 text-right font-mono ${t.amount < 0 ? "text-accent" : "text-success"}`}>
-                        {t.amount > 0 ? "+" : ""}{t.amount}
-                      </td>
+                      <td className={`px-3 py-2 text-right font-mono ${t.amount < 0 ? "text-accent" : "text-success"}`}>{t.amount > 0 ? "+" : ""}{t.amount}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -230,75 +294,132 @@ function PromotePage() {
         </section>
       </main>
 
-      {showModal && (
-        <div className="fixed inset-0 z-50 bg-black/70 grid place-items-center px-4" onClick={() => setShowModal(false)}>
-          <div className="bg-surface border border-border rounded-xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-white mb-4">Promote a Server</h3>
-            <div className="space-y-3">
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Server</span>
-                <select
-                  value={serverId}
-                  onChange={(e) => setServerId(e.target.value)}
-                  className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                >
-                  {d.approvedServers.map((s) => (
-                    <option key={s.id} value={s.id}>{s.current_name}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Promotion Type</span>
-                <select
-                  value={promoType}
-                  onChange={(e) => setPromoType(e.target.value as PromotionType)}
-                  className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                >
-                  {PROMOTION_TYPES.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label} — {p.costPerDay} tokens/day</option>
-                  ))}
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Duration (days)</span>
-                <input
-                  type="number"
-                  min={1}
-                  max={90}
-                  value={days}
-                  onChange={(e) => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
-                  className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm"
-                />
-              </label>
+      {/* Promote modal */}
+      {promoModal && (
+        <Modal onClose={() => setPromoModal(null)} title={`Promote — ${promoModal.name}`}>
+          <ModalBody>
+            <Field label="Server">
+              <select value={serverId} onChange={(e) => setServerId(e.target.value)} className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm">
+                {d.approvedServers.map((s) => <option key={s.id} value={s.id}>{s.current_name}</option>)}
+              </select>
+            </Field>
+            <Field label="Duration (days)">
+              <input type="number" min={1} max={90} value={days}
+                onChange={(e) => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
+                className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <TotalRow total={promoModal.costPerDay * days} balance={d.balance} />
+          </ModalBody>
+          <ModalFooter>
+            <button onClick={() => setPromoModal(null)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+            <button
+              disabled={createMut.isPending || d.balance < promoModal.costPerDay * days || !serverId}
+              onClick={() => createMut.mutate({ server_id: serverId, type: promoModal.type, days })}
+              className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >{createMut.isPending ? "Working…" : "Confirm & Spend Credits"}</button>
+          </ModalFooter>
+        </Modal>
+      )}
 
-              <div className="bg-background/60 border border-border rounded-lg p-3 flex justify-between items-center">
-                <span className="text-xs text-muted-foreground">Total cost</span>
-                <span className="text-lg font-black text-brand">{totalCost} tokens</span>
-              </div>
-              {!canAfford && (
-                <p className="text-[11px] text-accent">Insufficient tokens. You have {d.balance}.</p>
-              )}
-              {error && <p className="text-[11px] text-accent">{error}</p>}
-            </div>
+      {/* Renew modal */}
+      {renewModal && (
+        <Modal onClose={() => setRenewModal(null)} title={`Renew — ${renewModal.type}`}>
+          <ModalBody>
+            <p className="text-xs text-muted-foreground">Server: <span className="text-white">{renewModal.server_name}</span></p>
+            <Field label="Extend by (days)">
+              <input type="number" min={1} max={90} value={renewDays}
+                onChange={(e) => setRenewDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
+                className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <TotalRow total={renewModal.costPerDay * renewDays} balance={d.balance} />
+          </ModalBody>
+          <ModalFooter>
+            <button onClick={() => setRenewModal(null)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+            <button
+              disabled={renewMut.isPending || d.balance < renewModal.costPerDay * renewDays}
+              onClick={() => renewMut.mutate({ promotion_id: renewModal.id, days: renewDays })}
+              className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >{renewMut.isPending ? "Renewing…" : "Confirm Renewal"}</button>
+          </ModalFooter>
+        </Modal>
+      )}
 
-            <div className="flex justify-end gap-2 mt-5">
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white"
-              >Cancel</button>
-              <button
-                disabled={!canAfford || !serverId || mut.isPending}
-                onClick={() => mut.mutate({ server_id: serverId, type: promoType, days })}
-                className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {mut.isPending ? "Promoting…" : "Confirm & Spend Tokens"}
-              </button>
+      {/* Buy credits modal */}
+      {buyOpen && (
+        <Modal onClose={() => setBuyOpen(false)} title="Buy Index Credits">
+          <ModalBody>
+            <p className="text-xs text-muted-foreground">Payments are coming soon. Preview of the packages below.</p>
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              {CREDIT_PACKAGES.map((pkg) => (
+                <div key={pkg.credits} className={`bg-background border rounded-lg p-3 relative ${pkg.label === "Best Value" ? "border-brand/60" : "border-border"}`}>
+                  {pkg.label === "Best Value" && <span className="absolute -top-2 right-2 text-[9px] uppercase font-bold bg-brand text-brand-foreground px-1.5 py-0.5 rounded">Best Value</span>}
+                  <div className="text-2xl font-black text-brand">{pkg.credits}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Index Credits</div>
+                  <div className="mt-2 text-white font-bold">€{pkg.price_eur}</div>
+                  <button
+                    onClick={() => toast.info("Payments coming soon.")}
+                    className="mt-2 w-full text-[11px] font-semibold bg-surface border border-border text-muted-foreground py-1.5 rounded cursor-not-allowed"
+                    disabled
+                  >Coming soon</button>
+                </div>
+              ))}
             </div>
-          </div>
-        </div>
+          </ModalBody>
+          <ModalFooter>
+            <button onClick={() => setBuyOpen(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Close</button>
+          </ModalFooter>
+        </Modal>
       )}
 
       <Footer />
+    </div>
+  );
+}
+
+function StatBox({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="bg-surface border border-border rounded-lg p-3">
+      <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">{label}</div>
+      <div className="text-2xl font-black text-white mt-0.5">{value}</div>
+    </div>
+  );
+}
+
+function Modal({ children, onClose, title }: { children: React.ReactNode; onClose: () => void; title: string }) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 grid place-items-center px-4" onClick={onClose}>
+      <div className="bg-surface border border-border rounded-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="px-5 py-3 border-b border-border">
+          <h3 className="text-base font-bold text-white">{title}</h3>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+function ModalBody({ children }: { children: React.ReactNode }) {
+  return <div className="p-5 space-y-3">{children}</div>;
+}
+function ModalFooter({ children }: { children: React.ReactNode }) {
+  return <div className="px-5 py-3 border-t border-border flex justify-end gap-2">{children}</div>;
+}
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">{label}</span>
+      {children}
+    </label>
+  );
+}
+function TotalRow({ total, balance }: { total: number; balance: number }) {
+  const enough = balance >= total;
+  return (
+    <div className="bg-background/60 border border-border rounded-lg p-3 space-y-1">
+      <div className="flex justify-between items-center">
+        <span className="text-xs text-muted-foreground">Total</span>
+        <span className="text-lg font-black text-brand">{total} credits</span>
+      </div>
+      {!enough && <p className="text-[11px] text-accent">Insufficient credits. You have {balance}.</p>}
     </div>
   );
 }
