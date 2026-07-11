@@ -555,6 +555,31 @@ function ServerPage() {
       </WithSideRails>
 
       <Footer />
+
+      {claimOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 grid place-items-center px-4" onClick={() => setClaimOpen(false)}>
+          <div className="bg-surface border border-border rounded-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-3 border-b border-border">
+              <h3 className="text-base font-bold text-white">Claim ownership of {server.current_name}</h3>
+            </div>
+            <div className="p-5 space-y-3">
+              <p className="text-xs text-muted-foreground">Provide proof or contact details showing you operate this server. Admins will review your request.</p>
+              <textarea value={claimMsg} onChange={(e) => setClaimMsg(e.target.value)} rows={6} maxLength={2000}
+                placeholder="e.g. I am the owner — you can verify via a note on the website homepage, DM on Discord (@handle), etc."
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+              <p className="text-[10px] text-muted-foreground text-right">{claimMsg.length}/2000</p>
+            </div>
+            <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
+              <button onClick={() => setClaimOpen(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+              <button
+                disabled={claimMut.isPending || claimMsg.trim().length < 10}
+                onClick={() => claimMut.mutate(claimMsg.trim())}
+                className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >{claimMut.isPending ? "Submitting…" : "Submit claim"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
