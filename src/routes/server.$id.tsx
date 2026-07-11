@@ -233,6 +233,21 @@ function ServerPage() {
         ) : <div />}
       </div>
 
+      {userId && server.owner_id !== userId && (
+        <div className="mt-2.5 pt-2.5 border-t border-border/60">
+          {claimStatus?.status === "pending" ? (
+            <div className="text-[10px] text-accent bg-accent/10 border border-accent/30 rounded px-2 py-1.5 text-center">Ownership claim pending review</div>
+          ) : claimStatus?.status === "approved" ? (
+            <div className="text-[10px] text-success bg-success/10 border border-success/30 rounded px-2 py-1.5 text-center">Ownership approved</div>
+          ) : (
+            <button onClick={() => setClaimOpen(true)}
+              className="w-full inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors">
+              <UserCheck className="size-3" /> Claim Ownership
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="mt-2.5 pt-2.5 border-t border-border/60 flex items-center justify-between text-[9px] uppercase tracking-widest text-muted-foreground">
         <span className="flex items-center gap-1"><Hash className="size-3" /> ID</span>
         <span className="font-mono text-white/90">{serialLabel}</span>
