@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users, CheckCircle2, Hash, Award } from "lucide-react";
+import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users, CheckCircle2, Hash, Award, UserCheck } from "lucide-react";
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -12,8 +12,10 @@ import { ShieldBadge } from "@/components/site/ShieldBadge";
 import { WithSideRails } from "@/components/site/AdSlot";
 import { getServerDetail } from "@/lib/servers.functions";
 import { castVote, getVoteCooldown } from "@/lib/voting.functions";
+import { createOwnershipClaim, getOwnershipClaimStatus } from "@/lib/advertising.functions";
 import { getFingerprint } from "@/lib/fingerprint";
 import { getTrustBadge } from "@/lib/trust";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/server/$id")({
   head: () => ({ meta: [{ title: `Server — L2Index` }, { name: "description", content: `Trust audit, ranking history, and identity chain for this Lineage 2 server on L2Index.` }] }),
