@@ -13,6 +13,12 @@ import { Search, Eye, Check, X, MessageSquareWarning, Pause, StickyNote, Externa
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
 import { adminListServers, adminSetServerStatus, adminUpdateAdminNotes, checkIsAdmin } from "@/lib/servers.functions";
+import {
+  adminListPricing,
+  adminUpdatePricing,
+  adminListOwnershipClaims,
+  adminDecideOwnershipClaim,
+} from "@/lib/advertising.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({ meta: [{ title: "Admin — L2Index" }] }),
