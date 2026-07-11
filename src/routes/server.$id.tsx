@@ -4,7 +4,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users, CheckCircle2, Hash, Award } from "lucide-react";
+import { Globe, MessageCircle, Calendar, Trophy, History, ShieldCheck, Clock, TrendingUp, ChevronRight, Users, CheckCircle2, Hash, Award, UserCheck } from "lucide-react";
 
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
@@ -12,8 +12,10 @@ import { ShieldBadge } from "@/components/site/ShieldBadge";
 import { WithSideRails } from "@/components/site/AdSlot";
 import { getServerDetail } from "@/lib/servers.functions";
 import { castVote, getVoteCooldown } from "@/lib/voting.functions";
+import { createOwnershipClaim, getOwnershipClaimStatus } from "@/lib/advertising.functions";
 import { getFingerprint } from "@/lib/fingerprint";
 import { getTrustBadge } from "@/lib/trust";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/server/$id")({
   head: () => ({ meta: [{ title: `Server — L2Index` }, { name: "description", content: `Trust audit, ranking history, and identity chain for this Lineage 2 server on L2Index.` }] }),
@@ -119,6 +121,28 @@ function ServerPage() {
 
   const [justVoted, setJustVoted] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const [userId, setUserId] = useState<string | null>(null);
+  const [claimOpen, setClaimOpen] = useState(false);
+  const [claimMsg, setClaimMsg] = useState("");
+  const claimStatusFn = useServerFn(getOwnershipClaimStatus);
+  const createClaimFn = useServerFn(createOwnershipClaim);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+
+  const { data: claimStatus, refetch: refetchClaim } = useQuery({
+    queryKey: ["ownership-claim", id, userId],
+    queryFn: () => claimStatusFn({ data: { server_id: id } }),
+    enabled: !!userId,
+  });
+
+  const claimMut = useMutation({
+    mutationFn: (message: string) => createClaimFn({ data: { server_id: id, message } }),
+    onSuccess: () => { toast.success("Ownership claim submitted"); setClaimOpen(false); setClaimMsg(""); refetchClaim(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const mutation = useMutation({
     mutationFn: async () => vote({ data: { server_id: id, fingerprint: getFingerprint() } }),
@@ -208,6 +232,21 @@ function ServerPage() {
           </a>
         ) : <div />}
       </div>
+
+      {userId && server.owner_id !== userId && (
+        <div className="mt-2.5 pt-2.5 border-t border-border/60">
+          {claimStatus?.status === "pending" ? (
+            <div className="text-[10px] text-accent bg-accent/10 border border-accent/30 rounded px-2 py-1.5 text-center">Ownership claim pending review</div>
+          ) : claimStatus?.status === "approved" ? (
+            <div className="text-[10px] text-success bg-success/10 border border-success/30 rounded px-2 py-1.5 text-center">Ownership approved</div>
+          ) : (
+            <button onClick={() => setClaimOpen(true)}
+              className="w-full inline-flex items-center justify-center gap-1.5 bg-surface hover:bg-surface/70 border border-border text-white px-3 py-2 rounded-lg text-[11px] font-semibold transition-colors">
+              <UserCheck className="size-3" /> Claim Ownership
+            </button>
+          )}
+        </div>
+      )}
 
       <div className="mt-2.5 pt-2.5 border-t border-border/60 flex items-center justify-between text-[9px] uppercase tracking-widest text-muted-foreground">
         <span className="flex items-center gap-1"><Hash className="size-3" /> ID</span>
@@ -516,6 +555,31 @@ function ServerPage() {
       </WithSideRails>
 
       <Footer />
+
+      {claimOpen && (
+        <div className="fixed inset-0 z-50 bg-black/70 grid place-items-center px-4" onClick={() => setClaimOpen(false)}>
+          <div className="bg-surface border border-border rounded-xl max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="px-5 py-3 border-b border-border">
+              <h3 className="text-base font-bold text-white">Claim ownership of {server.current_name}</h3>
+            </div>
+            <div className="p-5 space-y-3">
+              <p className="text-xs text-muted-foreground">Provide proof or contact details showing you operate this server. Admins will review your request.</p>
+              <textarea value={claimMsg} onChange={(e) => setClaimMsg(e.target.value)} rows={6} maxLength={2000}
+                placeholder="e.g. I am the owner — you can verify via a note on the website homepage, DM on Discord (@handle), etc."
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+              <p className="text-[10px] text-muted-foreground text-right">{claimMsg.length}/2000</p>
+            </div>
+            <div className="px-5 py-3 border-t border-border flex justify-end gap-2">
+              <button onClick={() => setClaimOpen(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+              <button
+                disabled={claimMut.isPending || claimMsg.trim().length < 10}
+                onClick={() => claimMut.mutate(claimMsg.trim())}
+                className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition"
+              >{claimMut.isPending ? "Submitting…" : "Submit claim"}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

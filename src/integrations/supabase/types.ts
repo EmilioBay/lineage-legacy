@@ -14,6 +14,74 @@ export type Database = {
   }
   public: {
     Tables: {
+      ownership_claims: {
+        Row: {
+          admin_note: string | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          message: string | null
+          server_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          admin_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          server_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          admin_note?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          message?: string | null
+          server_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ownership_claims_server_id_fkey"
+            columns: ["server_id"]
+            isOneToOne: false
+            referencedRelation: "servers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promotion_pricing: {
+        Row: {
+          cost_per_day: number
+          description: string
+          exclusive: boolean
+          name: string
+          type: Database["public"]["Enums"]["promotion_type"]
+          updated_at: string
+        }
+        Insert: {
+          cost_per_day: number
+          description?: string
+          exclusive?: boolean
+          name: string
+          type: Database["public"]["Enums"]["promotion_type"]
+          updated_at?: string
+        }
+        Update: {
+          cost_per_day?: number
+          description?: string
+          exclusive?: boolean
+          name?: string
+          type?: Database["public"]["Enums"]["promotion_type"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       promotions: {
         Row: {
           created_at: string
@@ -411,7 +479,13 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       payment_status: "pending" | "paid" | "cancelled"
-      promotion_type: "banner" | "sponsored_new" | "spotlight"
+      promotion_type:
+        | "banner"
+        | "sponsored_new"
+        | "spotlight"
+        | "banner_left"
+        | "banner_right"
+        | "sponsored"
       server_status:
         | "pending"
         | "approved"
@@ -548,7 +622,14 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       payment_status: ["pending", "paid", "cancelled"],
-      promotion_type: ["banner", "sponsored_new", "spotlight"],
+      promotion_type: [
+        "banner",
+        "sponsored_new",
+        "spotlight",
+        "banner_left",
+        "banner_right",
+        "sponsored",
+      ],
       server_status: [
         "pending",
         "approved",
