@@ -230,6 +230,11 @@ function Admin() {
         </div>
       </div>
 
+      <OwnershipClaimsSection />
+      <PricingSection />
+
+
+
       {/* Approve/Reject/Request-changes moderator note dialog */}
       <Dialog open={!!modMode} onOpenChange={(o) => { if (!o) { setModMode(null); setModTarget(null); setModText(""); } }}>
         <DialogContent>
