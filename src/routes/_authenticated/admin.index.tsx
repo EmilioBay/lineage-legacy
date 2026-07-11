@@ -346,7 +346,133 @@ function IconAction({ children, tone = "default", as, ...rest }: { children: Rea
   return <Comp className={`${base} ${cls}`} {...rest}>{children}</Comp>;
 }
 
-function Shell({ children }: { children: React.ReactNode }) {
+function OwnershipClaimsSection() {
+  const listFn = useServerFn(adminListOwnershipClaims);
+  const decideFn = useServerFn(adminDecideOwnershipClaim);
+  const { data: claims, refetch } = useQuery({
+    queryKey: ["admin-ownership-claims"],
+    queryFn: () => listFn(),
+  });
+  const [note, setNote] = useState<Record<string, string>>({});
+  const mut = useMutation({
+    mutationFn: (v: { id: string; decision: "approved" | "rejected"; admin_note?: string }) => decideFn({ data: v }),
+    onSuccess: () => { toast.success("Updated"); refetch(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const pending = (claims ?? []).filter((c) => c.status === "pending");
+  return (
+    <section className="mt-8">
+      <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-2">Ownership Claims <span className="text-muted-foreground">({pending.length} pending)</span></h2>
+      <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
+        {(claims ?? []).length === 0 ? (
+          <div className="text-center py-6 text-xs text-muted-foreground">No claims yet.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-background/60">
+              <tr>
+                <th className="text-left px-3 py-2">Server</th>
+                <th className="text-left px-3 py-2">Requester</th>
+                <th className="text-left px-3 py-2">Message</th>
+                <th className="text-left px-3 py-2">Status</th>
+                <th className="text-right px-3 py-2">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {(claims ?? []).map((c) => (
+                <tr key={c.id}>
+                  <td className="px-3 py-2">
+                    <Link to="/server/$id" params={{ id: c.server_id }} className="text-white hover:text-brand font-semibold">{c.server_name}</Link>
+                    <div className="text-[10px] text-muted-foreground font-mono">{c.server_domain}</div>
+                  </td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{c.user_email}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground max-w-sm">
+                    <div className="line-clamp-3">{c.message}</div>
+                    {c.status === "pending" && (
+                      <input value={note[c.id] ?? ""} onChange={(e) => setNote({ ...note, [c.id]: e.target.value })}
+                        placeholder="Admin note (optional)" className="mt-1 w-full bg-background border border-border rounded px-2 py-1 text-[11px]" />
+                    )}
+                  </td>
+                  <td className="px-3 py-2"><StatusPill status={c.status} /></td>
+                  <td className="px-3 py-2 text-right">
+                    {c.status === "pending" ? (
+                      <div className="flex gap-1 justify-end">
+                        <button onClick={() => mut.mutate({ id: c.id, decision: "approved", admin_note: note[c.id] })}
+                          className="text-[11px] font-semibold bg-brand text-brand-foreground px-2 py-1 rounded hover:opacity-90">Approve</button>
+                        <button onClick={() => mut.mutate({ id: c.id, decision: "rejected", admin_note: note[c.id] })}
+                          className="text-[11px] font-semibold bg-destructive/80 text-destructive-foreground px-2 py-1 rounded hover:bg-destructive">Reject</button>
+                      </div>
+                    ) : (
+                      <span className="text-[10px] text-muted-foreground">{c.decided_at ? new Date(c.decided_at).toLocaleDateString() : ""}</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </section>
+  );
+}
+
+function PricingSection() {
+  const listFn = useServerFn(adminListPricing);
+  const updateFn = useServerFn(adminUpdatePricing);
+  const { data: pricing, refetch } = useQuery({
+    queryKey: ["admin-pricing"],
+    queryFn: () => listFn(),
+  });
+  const [edits, setEdits] = useState<Record<string, number>>({});
+  const mut = useMutation({
+    mutationFn: (v: { type: string; cost_per_day: number }) => updateFn({ data: v as never }),
+    onSuccess: () => { toast.success("Price updated"); refetch(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  return (
+    <section className="mt-8 mb-4">
+      <h2 className="text-sm font-bold text-white uppercase tracking-widest mb-2">Promotion Pricing</h2>
+      <div className="border border-border rounded-lg overflow-hidden bg-surface/30">
+        <table className="w-full text-sm">
+          <thead className="text-[10px] uppercase tracking-wider text-muted-foreground bg-background/60">
+            <tr>
+              <th className="text-left px-3 py-2">Slot</th>
+              <th className="text-left px-3 py-2">Description</th>
+              <th className="text-left px-3 py-2">Exclusive</th>
+              <th className="text-left px-3 py-2">Credits / day</th>
+              <th className="text-right px-3 py-2">Save</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-border">
+            {(pricing ?? []).map((p) => {
+              const val = edits[p.type] ?? p.cost_per_day;
+              return (
+                <tr key={p.type}>
+                  <td className="px-3 py-2 text-white font-semibold">{p.name}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{p.description}</td>
+                  <td className="px-3 py-2 text-xs text-muted-foreground">{p.exclusive ? "Yes" : "No"}</td>
+                  <td className="px-3 py-2">
+                    <input type="number" min={1} value={val}
+                      onChange={(e) => setEdits({ ...edits, [p.type]: Math.max(1, Number(e.target.value) || 1) })}
+                      className="w-24 bg-background border border-border rounded px-2 py-1 text-sm font-mono" />
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      disabled={val === p.cost_per_day || mut.isPending}
+                      onClick={() => mut.mutate({ type: p.type, cost_per_day: val })}
+                      className="text-[11px] font-semibold bg-brand text-brand-foreground px-2 py-1 rounded hover:opacity-90 disabled:opacity-40"
+                    >Save</button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
