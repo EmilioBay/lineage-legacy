@@ -82,29 +82,41 @@ export const getAdvertisingDashboard = createServerFn({ method: "GET" })
       promoServerNames = Object.fromEntries((rows ?? []).map((r) => [r.id, r.current_name]));
     }
 
-    // Slot availability for exclusive types: look up latest paid promotion end_date across all users
+    // Slot availability for exclusive types: look up latest paid promotion + occupant across all users
     const priceRows = (pricing ?? []) as { type: PromotionType; name: string; description: string; cost_per_day: number; exclusive: boolean }[];
     const exclusiveTypes = priceRows.filter((p) => p.exclusive).map((p) => p.type);
-    let slotState: Record<string, { occupied: boolean; next_available: string | null }> = {};
+    let slotState: Record<string, { occupied: boolean; next_available: string | null; occupant_name: string | null; owned_by_me: boolean; my_promotion_id: string | null }> = {};
     if (exclusiveTypes.length > 0) {
       const nowIso = new Date().toISOString();
       const { data: active } = await supabase
         .from("promotions")
-        .select("type, end_date")
+        .select("id, type, end_date, server_id, owner_id")
         .in("type", exclusiveTypes)
         .eq("payment_status", "paid")
         .gt("end_date", nowIso);
-      const grouped: Record<string, string[]> = {};
+      const activeServerIds = Array.from(new Set((active ?? []).map((r) => r.server_id)));
+      let nameMap: Record<string, string> = {};
+      if (activeServerIds.length) {
+        const { data: rows } = await supabase.from("servers").select("id, current_name").in("id", activeServerIds);
+        nameMap = Object.fromEntries((rows ?? []).map((r) => [r.id, r.current_name]));
+      }
+      const grouped: Record<string, { end_date: string; server_id: string; owner_id: string; id: string }[]> = {};
       (active ?? []).forEach((r) => {
-        (grouped[r.type] ??= []).push(r.end_date);
+        (grouped[r.type] ??= []).push({ end_date: r.end_date, server_id: r.server_id, owner_id: r.owner_id ?? "", id: r.id });
       });
       for (const t of exclusiveTypes) {
-        const ends = grouped[t] ?? [];
-        if (ends.length > 0) {
-          const latest = ends.sort().slice(-1)[0];
-          slotState[t] = { occupied: true, next_available: latest };
+        const rows = grouped[t] ?? [];
+        if (rows.length > 0) {
+          const latest = [...rows].sort((a, b) => a.end_date.localeCompare(b.end_date)).slice(-1)[0];
+          slotState[t] = {
+            occupied: true,
+            next_available: latest.end_date,
+            occupant_name: nameMap[latest.server_id] ?? null,
+            owned_by_me: latest.owner_id === userId,
+            my_promotion_id: latest.owner_id === userId ? latest.id : null,
+          };
         } else {
-          slotState[t] = { occupied: false, next_available: null };
+          slotState[t] = { occupied: false, next_available: null, occupant_name: null, owned_by_me: false, my_promotion_id: null };
         }
       }
     }

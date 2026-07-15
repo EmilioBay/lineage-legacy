@@ -9,9 +9,20 @@ import {
   getAdvertisingDashboard,
   createTokenPromotion,
   renewPromotion,
-  CREDIT_PACKAGES,
   type PromotionType,
 } from "@/lib/advertising.functions";
+
+const BANNER_TYPES: PromotionType[] = ["banner", "banner_left", "banner_right"];
+const HOMEPAGE_TYPES: PromotionType[] = ["spotlight", "sponsored", "sponsored_new"];
+
+const SLOT_META: Record<PromotionType, { size: string; hint: string }> = {
+  banner:        { size: "1200 × 120 px", hint: "Homepage top strip banner." },
+  banner_left:   { size: "300 × 600 px",  hint: "Left side rail (desktop ≥1280px)." },
+  banner_right:  { size: "300 × 600 px",  hint: "Right side rail (desktop ≥1280px)." },
+  spotlight:     { size: "128 × 128 logo",hint: "Featured row inside Current Season." },
+  sponsored:     { size: "128 × 128 logo",hint: "Sponsored card in homepage rankings." },
+  sponsored_new: { size: "128 × 128 logo",hint: "Sponsored card in New Servers table." },
+};
 
 export const Route = createFileRoute("/_authenticated/promote")({
   head: () => ({
@@ -41,7 +52,7 @@ function PromotePage() {
     queryFn: () => fetchDashboard(),
   });
 
-  const [buyOpen, setBuyOpen] = useState(false);
+  const [category, setCategory] = useState<"banner" | "homepage">("banner");
   const [promoModal, setPromoModal] = useState<{ type: PromotionType; name: string; costPerDay: number } | null>(null);
   const [renewModal, setRenewModal] = useState<{ id: string; server_name: string; type: string; costPerDay: number } | null>(null);
   const [serverId, setServerId] = useState("");

@@ -55,7 +55,7 @@ export function SideRail({ side }: { side: "left" | "right" }) {
 
 export function WithSideRails({ children }: { children: React.ReactNode }) {
   return (
-    <div className="max-w-[1400px] mx-auto px-4 md:px-6 flex gap-6 items-start">
+    <div className="max-w-[1720px] mx-auto px-4 md:px-6 flex gap-6 items-start">
       <SideRail side="left" />
       <div className="flex-1 min-w-0">{children}</div>
       <SideRail side="right" />

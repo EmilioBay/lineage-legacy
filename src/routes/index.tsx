@@ -8,6 +8,7 @@ import { Footer } from "@/components/site/Footer";
 import { getHomepageData } from "@/lib/servers.functions";
 import { TopBannerStrip, WithSideRails } from "@/components/site/AdSlot";
 import { RankingTable } from "@/components/site/RankingTable";
+import { CHRONICLES } from "@/lib/l2-constants";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -43,6 +44,10 @@ function Home() {
     navigate({ to: "/browse", search: { q: search.trim() || undefined } });
   }
 
+  function jumpTo(params: Record<string, string | undefined>) {
+    navigate({ to: "/browse", search: params });
+  }
+
   const year = new Date().getFullYear();
 
   return (
@@ -53,7 +58,7 @@ function Home() {
 
       <WithSideRails>
         {/* Hero */}
-        <header className="py-8 px-6 max-w-7xl mx-auto text-center">
+        <header className="py-8 px-6 max-w-[1400px] mx-auto text-center">
           <h1 className="text-3xl md:text-4xl font-extrabold text-white tracking-tight mb-3">
             Find <span className="text-brand">Trusted</span> Lineage 2 Servers
           </h1>
@@ -71,6 +76,26 @@ function Home() {
             <button type="submit" className="bg-brand text-brand-foreground px-5 py-2.5 rounded-lg text-sm font-semibold hover:opacity-90 transition">Search</button>
           </form>
 
+          {/* Quick filters */}
+          <div className="max-w-4xl mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 mb-4">
+            <QuickSelect label="Chronicle" onChange={(v) => jumpTo({ chronicle: v || undefined })}
+              options={[["", "Any Chronicle"], ...CHRONICLES.map((c) => [c, c] as [string, string])]} />
+            <QuickSelect label="Rate" onChange={(v) => jumpTo({ rate: v || undefined })}
+              options={[
+                ["", "Any Rate"],
+                ["low", "Low (x1–x5)"],
+                ["mid", "Mid (x6–x50)"],
+                ["high", "High (x51–x500)"],
+                ["extreme", "Extreme (x500+)"],
+              ]} />
+            <QuickSelect label="Region" onChange={(v) => jumpTo({ region: v || undefined })}
+              options={[["", "Any Region"], ["Europe", "Europe"], ["Americas", "Americas"], ["Asia", "Asia"], ["Other", "Other"]]} />
+            <QuickSelect label="Language" onChange={(v) => jumpTo({ language: v || undefined })}
+              options={[["", "Any Language"], ["English", "English"], ["Russian", "Russian"], ["Spanish", "Spanish"], ["Portuguese", "Portuguese"], ["German", "German"], ["French", "French"], ["Polish", "Polish"]]} />
+            <QuickSelect label="Status" onChange={(v) => jumpTo({ status: v || undefined })}
+              options={[["", "Any Status"], ["Live", "Live"], ["Opening Soon", "Opening Soon"]]} />
+          </div>
+
           <div className="flex justify-center gap-4 flex-wrap">
             <div className="bg-surface/50 border border-border px-4 py-2 rounded-lg">
               <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold mr-2">Servers</span>
@@ -83,7 +108,7 @@ function Home() {
           </div>
         </header>
 
-        <main className="max-w-7xl mx-auto px-6 pb-16">
+        <main className="max-w-[1400px] mx-auto px-6 pb-16">
           {/* Sponsored banners */}
           {(data?.banners?.length ?? 0) > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
@@ -102,7 +127,6 @@ function Home() {
 
           {isLoading && <p className="text-muted-foreground text-sm text-center py-8">Loading rankings…</p>}
 
-          {/* Three-column compact tables */}
           <div className="grid lg:grid-cols-3 gap-4 mb-8">
             <RankingTable
               accent="brand"
@@ -135,8 +159,6 @@ function Home() {
             />
           </div>
 
-
-          {/* Opening Soon */}
           {(data?.openingSoon?.length ?? 0) > 0 && (
             <div className="mb-6">
               <RankingTable
@@ -155,7 +177,6 @@ function Home() {
             </div>
           )}
 
-          {/* Why L2Index? — compact */}
           <section className="pt-2">
             <div className="text-center mb-3">
               <h2 className="text-lg font-bold text-white tracking-tight">Why <span className="text-brand">L2Index</span>?</h2>
@@ -178,5 +199,20 @@ function Home() {
 
       <Footer />
     </div>
+  );
+}
+
+function QuickSelect({ label, onChange, options }: { label: string; onChange: (v: string) => void; options: [string, string][] }) {
+  return (
+    <label className="block text-left">
+      <span className="block text-[9px] font-mono uppercase tracking-wider text-muted-foreground mb-1">{label}</span>
+      <select
+        onChange={(e) => onChange(e.target.value)}
+        defaultValue=""
+        className="w-full h-9 bg-surface border border-border rounded-md px-2 text-xs text-white focus:outline-none focus:border-brand/60"
+      >
+        {options.map(([v, l]) => (<option key={v} value={v}>{l}</option>))}
+      </select>
+    </label>
   );
 }
