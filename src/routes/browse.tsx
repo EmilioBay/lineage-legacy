@@ -27,6 +27,20 @@ function regionOf(country?: string | null): (typeof REGIONS)[number] {
   return COUNTRY_REGION[country] ?? "Europe";
 }
 
+const LANGUAGES = ["English", "Russian", "Spanish", "Portuguese", "German", "French", "Polish"] as const;
+const COUNTRY_LANGUAGE: Record<string, (typeof LANGUAGES)[number]> = {
+  Russia: "Russian", Ukraine: "Russian", Belarus: "Russian", Kazakhstan: "Russian",
+  Brazil: "Portuguese", Portugal: "Portuguese",
+  Spain: "Spanish", Argentina: "Spanish", Mexico: "Spanish", Chile: "Spanish", Colombia: "Spanish",
+  Peru: "Spanish", Venezuela: "Spanish", Uruguay: "Spanish",
+  Germany: "German", Austria: "German", Switzerland: "German",
+  France: "French", Poland: "Polish",
+};
+function languageOf(country?: string | null): (typeof LANGUAGES)[number] {
+  if (!country) return "English";
+  return COUNTRY_LANGUAGE[country] ?? "English";
+}
+
 const STATUSES = ["Live", "Opening Soon"] as const;
 const TRUST_BADGES: TrustBadge[] = ["new", "established", "veteran", "legendary"];
 const SORTS = [
@@ -39,7 +53,14 @@ const SORTS = [
 ] as const;
 type SortId = (typeof SORTS)[number]["id"];
 
-const searchSchema = z.object({ q: z.string().optional() });
+const searchSchema = z.object({
+  q: z.string().optional(),
+  chronicle: z.string().optional(),
+  rate: z.string().optional(),
+  region: z.string().optional(),
+  language: z.string().optional(),
+  status: z.string().optional(),
+});
 
 export const Route = createFileRoute("/browse")({
   validateSearch: (s) => searchSchema.parse(s),
@@ -58,10 +79,11 @@ function Browse() {
   const list = useServerFn(listServers);
 
   const [q, setQ] = useState(search.q ?? "");
-  const [chronicle, setChronicle] = useState<string>("");
-  const [rateBucket, setRateBucket] = useState<string>("");
-  const [region, setRegion] = useState<string>("");
-  const [status, setStatus] = useState<string>("");
+  const [chronicle, setChronicle] = useState<string>(search.chronicle ?? "");
+  const [rateBucket, setRateBucket] = useState<string>(search.rate ?? "");
+  const [region, setRegion] = useState<string>(search.region ?? "");
+  const [language, setLanguage] = useState<string>(search.language ?? "");
+  const [status, setStatus] = useState<string>(search.status ?? "");
   const [trust, setTrust] = useState<string>("");
   const [sort, setSort] = useState<SortId>("votes");
 
@@ -80,6 +102,7 @@ function Browse() {
         ...s,
         _rate: rateNum,
         _region: regionOf(s.country),
+        _language: languageOf(s.country),
         _status: launched ? "Live" : "Opening Soon",
         _badge: badge.badge,
       };
@@ -96,6 +119,7 @@ function Browse() {
         return true;
       })
       .filter((s) => (region ? s._region === region : true))
+      .filter((s) => (language ? s._language === language : true))
       .filter((s) => (status ? s._status === status : true))
       .filter((s) => (trust ? s._badge === trust : true))
       .sort((a, b) => {
@@ -109,7 +133,7 @@ function Browse() {
           default: return b.votes - a.votes;
         }
       });
-  }, [data, chronicle, rateBucket, region, status, trust, sort]);
+  }, [data, chronicle, rateBucket, region, language, status, trust, sort]);
 
   const chronicleCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -127,6 +151,7 @@ function Browse() {
     setChronicle("");
     setRateBucket("");
     setRegion("");
+    setLanguage("");
     setStatus("");
     setTrust("");
     setSort("votes");
@@ -134,7 +159,7 @@ function Browse() {
   }
 
   const hasActiveFilters =
-    !!q || !!chronicle || !!rateBucket || !!region || !!status || !!trust || sort !== "votes" || !!search.q;
+    !!q || !!chronicle || !!rateBucket || !!region || !!language || !!status || !!trust || sort !== "votes" || !!search.q;
 
   return (
     <div className="min-h-screen bg-background">
@@ -170,7 +195,7 @@ function Browse() {
 
         {/* Filters */}
         <div className="bg-surface/60 border border-border rounded-xl p-3 mb-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             <FilterSelect label="Chronicle" value={chronicle} onChange={setChronicle}
               options={[["", "All Chronicles"], ...CHRONICLES.map((c) => [c, c] as [string, string])]} />
             <FilterSelect label="Rates" value={rateBucket} onChange={setRateBucket}
@@ -183,6 +208,8 @@ function Browse() {
               ]} />
             <FilterSelect label="Region" value={region} onChange={setRegion}
               options={[["", "All Regions"], ...REGIONS.map((r) => [r, r] as [string, string])]} />
+            <FilterSelect label="Language" value={language} onChange={setLanguage}
+              options={[["", "All Languages"], ...LANGUAGES.map((l) => [l, l] as [string, string])]} />
             <FilterSelect label="Status" value={status} onChange={setStatus}
               options={[["", "Any Status"], ...STATUSES.map((s) => [s, s] as [string, string])]} />
             <FilterSelect label="Trust" value={trust} onChange={setTrust}
@@ -277,12 +304,12 @@ function Browse() {
                     </div>
 
                     <div className="hidden md:block">
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-brand/10 border border-brand/25 text-brand font-semibold">
                         {s.chronicle}
                       </span>
                     </div>
                     <div className="hidden md:block">
-                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-muted-foreground">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-accent/10 border border-accent/25 text-accent font-semibold">
                         x{String(s.rates).replace(/^x/i, "")}
                       </span>
                     </div>

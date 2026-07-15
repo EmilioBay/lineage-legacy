@@ -9,9 +9,20 @@ import {
   getAdvertisingDashboard,
   createTokenPromotion,
   renewPromotion,
-  CREDIT_PACKAGES,
   type PromotionType,
 } from "@/lib/advertising.functions";
+
+const BANNER_TYPES: PromotionType[] = ["banner", "banner_left", "banner_right"];
+const HOMEPAGE_TYPES: PromotionType[] = ["spotlight", "sponsored", "sponsored_new"];
+
+const SLOT_META: Record<PromotionType, { size: string; hint: string }> = {
+  banner:        { size: "1200 × 120 px", hint: "Homepage top strip banner." },
+  banner_left:   { size: "300 × 600 px",  hint: "Left side rail (desktop ≥1280px)." },
+  banner_right:  { size: "300 × 600 px",  hint: "Right side rail (desktop ≥1280px)." },
+  spotlight:     { size: "128 × 128 logo",hint: "Featured row inside Current Season." },
+  sponsored:     { size: "128 × 128 logo",hint: "Sponsored card in homepage rankings." },
+  sponsored_new: { size: "128 × 128 logo",hint: "Sponsored card in New Servers table." },
+};
 
 export const Route = createFileRoute("/_authenticated/promote")({
   head: () => ({
@@ -41,7 +52,7 @@ function PromotePage() {
     queryFn: () => fetchDashboard(),
   });
 
-  const [buyOpen, setBuyOpen] = useState(false);
+  const [category, setCategory] = useState<"banner" | "homepage">("banner");
   const [promoModal, setPromoModal] = useState<{ type: PromotionType; name: string; costPerDay: number } | null>(null);
   const [renewModal, setRenewModal] = useState<{ id: string; server_name: string; type: string; costPerDay: number } | null>(null);
   const [serverId, setServerId] = useState("");
@@ -120,46 +131,88 @@ function PromotePage() {
           <div className="bg-surface border border-brand/30 rounded-lg p-3">
             <div className="text-[9px] uppercase tracking-widest text-muted-foreground font-bold">Index Credits</div>
             <div className="text-2xl font-black text-brand mt-0.5">{d.balance.toLocaleString()}</div>
-            <button onClick={() => setBuyOpen(true)} className="mt-1.5 text-[11px] font-semibold text-brand hover:underline">+ Buy Credits</button>
+            <Link to="/credits" className="mt-1.5 inline-block text-[11px] font-semibold text-brand hover:underline">+ Buy Credits</Link>
           </div>
           <StatBox label="Eligible Servers" value={d.approvedServers.length} />
           <StatBox label="Active Promotions" value={active.length} />
           <StatBox label="Pending" value={pending.length} />
         </div>
 
-        {/* Promotion slots */}
+        {/* Promotion slots by category */}
         <section>
-          <h2 className="text-xs font-bold text-white uppercase tracking-widest mb-2">Promotion Slots</h2>
+          <div className="flex items-center gap-2 mb-3">
+            {([["banner", "Banner Advertising"], ["homepage", "Homepage Promotion"]] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setCategory(id)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-md border transition ${
+                  category === id
+                    ? "bg-brand/15 border-brand/40 text-brand"
+                    : "bg-surface border-border text-muted-foreground hover:text-white"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-            {d.pricing.map((p) => {
-              const slot = d.slotState[p.type];
-              const occupied = p.exclusive && slot?.occupied;
-              return (
-                <div key={p.type} className={`relative bg-surface border rounded-lg p-4 flex flex-col ${occupied ? "border-border/60 opacity-80" : "border-border hover:border-brand/40 transition-colors"}`}>
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-bold text-white">{p.name}</h3>
-                    <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
-                      occupied ? "border-accent/40 text-accent bg-accent/10" : "border-success/40 text-success bg-success/10"
-                    }`}>{occupied ? "Occupied" : "Available"}</span>
+            {d.pricing
+              .filter((p) => (category === "banner" ? BANNER_TYPES : HOMEPAGE_TYPES).includes(p.type))
+              .map((p) => {
+                const slot = d.slotState[p.type] as
+                  | { occupied: boolean; next_available: string | null; occupant_name?: string | null; owned_by_me?: boolean; my_promotion_id?: string | null }
+                  | undefined;
+                const occupied = p.exclusive && slot?.occupied;
+                const mine = occupied && slot?.owned_by_me;
+                const meta = SLOT_META[p.type];
+                return (
+                  <div key={p.type} className={`relative bg-surface border rounded-lg p-4 flex flex-col ${occupied ? (mine ? "border-brand/40" : "border-border/60") : "border-border hover:border-brand/40 transition-colors"}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-bold text-white">{p.name}</h3>
+                      <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                        mine ? "border-brand/40 text-brand bg-brand/10"
+                          : occupied ? "border-accent/40 text-accent bg-accent/10"
+                          : "border-success/40 text-success bg-success/10"
+                      }`}>{mine ? "Yours" : occupied ? "Occupied" : "Available"}</span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-1">{p.description || meta.hint}</p>
+                    <div className="mt-2 text-[10px] font-mono text-muted-foreground">
+                      Size: <span className="text-white">{meta.size}</span>
+                    </div>
+                    {occupied && slot?.occupant_name && (
+                      <div className="mt-1 text-[10px] text-muted-foreground">
+                        Held by: <span className="text-white">{slot.occupant_name}</span>
+                      </div>
+                    )}
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
+                      <div className="text-[10px] text-muted-foreground">Cost</div>
+                      <div className="text-sm font-mono text-brand font-bold">{p.cost_per_day} / day</div>
+                    </div>
+                    {occupied && slot?.next_available && (
+                      <div className="mt-2 text-[10px] text-muted-foreground">
+                        {mine ? "Expires" : "Next available"}: <span className="text-white font-mono">{fmtDate(slot.next_available)}</span>
+                        {" · "}<span className="text-white/70">{daysUntil(slot.next_available)}d</span>
+                      </div>
+                    )}
+                    {mine && slot?.my_promotion_id ? (
+                      <button
+                        onClick={() => setRenewModal({ id: slot.my_promotion_id!, server_name: slot.occupant_name ?? "", type: p.name, costPerDay: p.cost_per_day })}
+                        className="mt-2 w-full bg-brand/15 border border-brand/30 text-brand text-xs font-semibold py-1.5 rounded hover:bg-brand/25 transition"
+                      >
+                        Extend
+                      </button>
+                    ) : !occupied ? (
+                      <button
+                        onClick={() => { setPromoModal({ type: p.type as PromotionType, name: p.name, costPerDay: p.cost_per_day }); setServerId(d.approvedServers[0]?.id ?? ""); setDays(7); }}
+                        className="mt-2 w-full bg-brand text-brand-foreground text-xs font-semibold py-1.5 rounded hover:opacity-90 transition"
+                      >
+                        Promote
+                      </button>
+                    ) : null}
                   </div>
-                  <p className="text-[11px] text-muted-foreground mt-1 flex-1">{p.description}</p>
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/60">
-                    <div className="text-[10px] text-muted-foreground">Cost</div>
-                    <div className="text-sm font-mono text-brand font-bold">{p.cost_per_day} / day</div>
-                  </div>
-                  {occupied && slot?.next_available ? (
-                    <div className="mt-2 text-[10px] text-muted-foreground">Next available: <span className="text-white font-mono">{fmtDate(slot.next_available)}</span></div>
-                  ) : (
-                    <button
-                      onClick={() => { setPromoModal({ type: p.type as PromotionType, name: p.name, costPerDay: p.cost_per_day }); setServerId(d.approvedServers[0]?.id ?? ""); setDays(7); }}
-                      className="mt-2 w-full bg-brand text-brand-foreground text-xs font-semibold py-1.5 rounded hover:opacity-90 transition"
-                    >
-                      Promote
-                    </button>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
           </div>
         </section>
 
@@ -344,32 +397,6 @@ function PromotePage() {
         </Modal>
       )}
 
-      {/* Buy credits modal */}
-      {buyOpen && (
-        <Modal onClose={() => setBuyOpen(false)} title="Buy Index Credits">
-          <ModalBody>
-            <p className="text-xs text-muted-foreground">Payments are coming soon. Preview of the packages below.</p>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              {CREDIT_PACKAGES.map((pkg) => (
-                <div key={pkg.credits} className={`bg-background border rounded-lg p-3 relative ${pkg.label === "Best Value" ? "border-brand/60" : "border-border"}`}>
-                  {pkg.label === "Best Value" && <span className="absolute -top-2 right-2 text-[9px] uppercase font-bold bg-brand text-brand-foreground px-1.5 py-0.5 rounded">Best Value</span>}
-                  <div className="text-2xl font-black text-brand">{pkg.credits}</div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Index Credits</div>
-                  <div className="mt-2 text-white font-bold">€{pkg.price_eur}</div>
-                  <button
-                    onClick={() => toast.info("Payments coming soon.")}
-                    className="mt-2 w-full text-[11px] font-semibold bg-surface border border-border text-muted-foreground py-1.5 rounded cursor-not-allowed"
-                    disabled
-                  >Coming soon</button>
-                </div>
-              ))}
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <button onClick={() => setBuyOpen(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Close</button>
-          </ModalFooter>
-        </Modal>
-      )}
 
       <Footer />
     </div>

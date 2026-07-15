@@ -53,17 +53,26 @@ export function ServerRankRow({
 
   const highlightBg = (() => {
     if (!highlightPalette || rank === undefined || rank > 3) return "";
+    // Subtle premium tint — no bright green. Amber/gold for "premium ranked", brand for sponsored.
     const tiers =
       highlightPalette === "green"
-        ? ["bg-success/20", "bg-success/10", "bg-success/[0.06]"]
-        : ["bg-brand/20", "bg-brand/10", "bg-brand/[0.06]"];
+        ? [
+            "bg-gradient-to-r from-gold/[0.12] via-gold/[0.04] to-transparent",
+            "bg-gradient-to-r from-gold/[0.07] via-gold/[0.02] to-transparent",
+            "bg-gradient-to-r from-gold/[0.04] to-transparent",
+          ]
+        : [
+            "bg-gradient-to-r from-brand/[0.14] via-brand/[0.04] to-transparent",
+            "bg-gradient-to-r from-brand/[0.08] via-brand/[0.02] to-transparent",
+            "bg-gradient-to-r from-brand/[0.04] to-transparent",
+          ];
     return tiers[rank - 1];
   })();
 
   const highlightText =
     highlightPalette && rank !== undefined && rank <= 3
       ? highlightPalette === "green"
-        ? "text-success"
+        ? "text-gold"
         : "text-brand"
       : "";
 
@@ -112,16 +121,16 @@ export function ServerRankRow({
             {server.current_name}
           </span>
           {sponsored && (
-            <span className="text-[7px] font-bold uppercase bg-success/10 text-success border border-success/20 px-1 py-0 rounded shrink-0">
+            <span className="text-[7px] font-bold uppercase bg-brand/15 text-brand border border-brand/30 px-1 py-0 rounded shrink-0">
               AD
             </span>
           )}
         </div>
-        <div className="text-[9px] text-muted-foreground mt-0 flex gap-1 items-center">
-          <span className="px-1 py-0 rounded bg-white/5 border border-white/10 font-mono">
+        <div className="text-[9px] mt-0 flex gap-1 items-center">
+          <span className="px-1 py-0 rounded bg-brand/10 border border-brand/25 text-brand font-mono font-semibold">
             {server.chronicle}
           </span>
-          <span className="px-1 py-0 rounded bg-white/5 border border-white/10 font-mono">
+          <span className="px-1 py-0 rounded bg-accent/10 border border-accent/25 text-accent font-mono font-semibold">
             x{String(server.rates).replace(/^x/i, "")}
           </span>
         </div>
