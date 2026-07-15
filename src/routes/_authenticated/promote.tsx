@@ -397,32 +397,6 @@ function PromotePage() {
         </Modal>
       )}
 
-      {/* Buy credits modal */}
-      {buyOpen && (
-        <Modal onClose={() => setBuyOpen(false)} title="Buy Index Credits">
-          <ModalBody>
-            <p className="text-xs text-muted-foreground">Payments are coming soon. Preview of the packages below.</p>
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              {CREDIT_PACKAGES.map((pkg) => (
-                <div key={pkg.credits} className={`bg-background border rounded-lg p-3 relative ${pkg.label === "Best Value" ? "border-brand/60" : "border-border"}`}>
-                  {pkg.label === "Best Value" && <span className="absolute -top-2 right-2 text-[9px] uppercase font-bold bg-brand text-brand-foreground px-1.5 py-0.5 rounded">Best Value</span>}
-                  <div className="text-2xl font-black text-brand">{pkg.credits}</div>
-                  <div className="text-[10px] uppercase tracking-widest text-muted-foreground">Index Credits</div>
-                  <div className="mt-2 text-white font-bold">€{pkg.price_eur}</div>
-                  <button
-                    onClick={() => toast.info("Payments coming soon.")}
-                    className="mt-2 w-full text-[11px] font-semibold bg-surface border border-border text-muted-foreground py-1.5 rounded cursor-not-allowed"
-                    disabled
-                  >Coming soon</button>
-                </div>
-              ))}
-            </div>
-          </ModalBody>
-          <ModalFooter>
-            <button onClick={() => setBuyOpen(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Close</button>
-          </ModalFooter>
-        </Modal>
-      )}
 
       <Footer />
     </div>
