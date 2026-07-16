@@ -9,11 +9,15 @@ import {
   getAdvertisingDashboard,
   createTokenPromotion,
   renewPromotion,
+  createSpotlightPromotion,
+  renewSpotlightPromotion,
   type PromotionType,
 } from "@/lib/advertising.functions";
 
+
 const BANNER_TYPES: PromotionType[] = ["banner", "banner_left", "banner_right"];
-const HOMEPAGE_TYPES: PromotionType[] = ["spotlight", "sponsored", "sponsored_new"];
+const HOMEPAGE_TYPES: PromotionType[] = ["sponsored", "sponsored_new"];
+
 
 const SLOT_META: Record<PromotionType, { size: string; hint: string }> = {
   banner:        { size: "1200 × 120 px", hint: "Homepage top strip banner." },
@@ -45,6 +49,9 @@ function PromotePage() {
   const fetchDashboard = useServerFn(getAdvertisingDashboard);
   const createPromo = useServerFn(createTokenPromotion);
   const renewPromo = useServerFn(renewPromotion);
+  const createSpot = useServerFn(createSpotlightPromotion);
+  const renewSpot = useServerFn(renewSpotlightPromotion);
+
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -52,12 +59,15 @@ function PromotePage() {
     queryFn: () => fetchDashboard(),
   });
 
-  const [category, setCategory] = useState<"banner" | "homepage">("banner");
+  const [category, setCategory] = useState<"banner" | "spotlight" | "homepage">("banner");
   const [promoModal, setPromoModal] = useState<{ type: PromotionType; name: string; costPerDay: number } | null>(null);
   const [renewModal, setRenewModal] = useState<{ id: string; server_name: string; type: string; costPerDay: number } | null>(null);
+  const [spotlightModal, setSpotlightModal] = useState<{ position: number; tier: "premium" | "standard"; costPerDay: number } | null>(null);
+  const [spotlightRenew, setSpotlightRenew] = useState<{ id: string; position: number; server_name: string; costPerDay: number } | null>(null);
   const [serverId, setServerId] = useState("");
   const [days, setDays] = useState(7);
   const [renewDays, setRenewDays] = useState(7);
+
 
   const createMut = useMutation({
     mutationFn: (input: { server_id: string; type: PromotionType; days: number }) => createPromo({ data: input }),
@@ -78,6 +88,27 @@ function PromotePage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const createSpotMut = useMutation({
+    mutationFn: (input: { server_id: string; position: number; days: number }) => createSpot({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["advertising-dashboard"] });
+      toast.success("Spotlight position secured");
+      setSpotlightModal(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const renewSpotMut = useMutation({
+    mutationFn: (input: { promotion_id: string; days: number }) => renewSpot({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["advertising-dashboard"] });
+      toast.success("Spotlight extended");
+      setSpotlightRenew(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const active = useMemo(() => (data?.promotions ?? []).filter((p) => p.is_active), [data]);
   const pending = useMemo(() => (data?.promotions ?? []).filter((p) => p.is_pending), [data]);
@@ -141,7 +172,7 @@ function PromotePage() {
         {/* Promotion slots by category */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            {([["banner", "Banner Advertising"], ["homepage", "Homepage Promotion"]] as const).map(([id, label]) => (
+            {([["banner", "Banner Advertising"], ["spotlight", "Spotlight Row"], ["homepage", "Homepage Promotion"]] as const).map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setCategory(id)}
@@ -156,6 +187,57 @@ function PromotePage() {
             ))}
           </div>
 
+          {category === "spotlight" ? (
+            <div>
+              <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full bg-brand" /> Premium (Positions 1–3)</span>
+                <span className="inline-flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full bg-accent" /> Standard (Positions 4–10, FIFO)</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                {(d.spotlightSlots ?? []).map((s) => {
+                  const premium = s.tier === "premium";
+                  const mine = s.owned_by_me;
+                  return (
+                    <div key={s.position} className={`relative bg-surface border rounded-lg p-3 flex flex-col ${
+                      mine ? "border-brand/50" : s.occupied ? "border-border/60" : premium ? "border-brand/30" : "border-border hover:border-accent/40 transition-colors"
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-[9px] uppercase font-bold ${premium ? "text-brand" : "text-accent"}`}>#{s.position}</span>
+                          <span className="text-[9px] uppercase font-bold text-muted-foreground">{premium ? "Premium" : "Standard"}</span>
+                        </div>
+                        <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                          mine ? "border-brand/40 text-brand bg-brand/10"
+                            : s.occupied ? "border-accent/40 text-accent bg-accent/10"
+                            : "border-success/40 text-success bg-success/10"
+                        }`}>{mine ? "Yours" : s.occupied ? "Occupied" : "Free"}</span>
+                      </div>
+                      <div className="mt-2 text-sm font-mono text-brand font-bold">{s.cost_per_day}<span className="text-[10px] text-muted-foreground font-normal"> /day</span></div>
+                      {s.occupied && s.occupant_name && (
+                        <div className="mt-1 text-[10px] text-muted-foreground truncate">{s.occupant_name}</div>
+                      )}
+                      {s.occupied && s.end_date && (
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+                          {mine ? "Exp." : "Free"}: <span className="text-white font-mono">{daysUntil(s.end_date)}d</span>
+                        </div>
+                      )}
+                      {mine && s.my_promotion_id ? (
+                        <button
+                          onClick={() => setSpotlightRenew({ id: s.my_promotion_id!, position: s.position, server_name: s.occupant_name ?? "", costPerDay: s.cost_per_day })}
+                          className="mt-2 w-full bg-brand/15 border border-brand/30 text-brand text-[11px] font-semibold py-1 rounded hover:bg-brand/25 transition"
+                        >Extend</button>
+                      ) : !s.occupied ? (
+                        <button
+                          onClick={() => { setSpotlightModal({ position: s.position, tier: s.tier, costPerDay: s.cost_per_day }); setServerId(d.approvedServers[0]?.id ?? ""); setDays(7); }}
+                          className={`mt-2 w-full text-[11px] font-semibold py-1 rounded transition ${premium ? "bg-brand text-brand-foreground hover:opacity-90" : "bg-accent text-accent-foreground hover:opacity-90"}`}
+                        >Take</button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {d.pricing
               .filter((p) => (category === "banner" ? BANNER_TYPES : HOMEPAGE_TYPES).includes(p.type))
@@ -214,6 +296,8 @@ function PromotePage() {
                 );
               })}
           </div>
+          )}
+
         </section>
 
         {/* Current promotions */}
@@ -397,8 +481,61 @@ function PromotePage() {
         </Modal>
       )}
 
+      {/* Spotlight take modal */}
+      {spotlightModal && (
+        <Modal onClose={() => setSpotlightModal(null)} title={`Spotlight — Position #${spotlightModal.position}`}>
+          <ModalBody>
+            <p className="text-[11px] text-muted-foreground">
+              Tier: <span className={spotlightModal.tier === "premium" ? "text-brand font-semibold" : "text-accent font-semibold"}>{spotlightModal.tier}</span>
+            </p>
+            <Field label="Server">
+              <select value={serverId} onChange={(e) => setServerId(e.target.value)} className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm">
+                {d.approvedServers.map((s) => <option key={s.id} value={s.id}>{s.current_name}</option>)}
+              </select>
+            </Field>
+            <Field label="Duration (days)">
+              <input type="number" min={1} max={90} value={days}
+                onChange={(e) => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
+                className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <TotalRow total={spotlightModal.costPerDay * days} balance={d.balance} />
+          </ModalBody>
+          <ModalFooter>
+            <button onClick={() => setSpotlightModal(null)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+            <button
+              disabled={createSpotMut.isPending || d.balance < spotlightModal.costPerDay * days || !serverId}
+              onClick={() => createSpotMut.mutate({ server_id: serverId, position: spotlightModal.position, days })}
+              className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >{createSpotMut.isPending ? "Working…" : "Confirm & Spend Credits"}</button>
+          </ModalFooter>
+        </Modal>
+      )}
+
+      {/* Spotlight renew modal */}
+      {spotlightRenew && (
+        <Modal onClose={() => setSpotlightRenew(null)} title={`Extend Spotlight #${spotlightRenew.position}`}>
+          <ModalBody>
+            <p className="text-xs text-muted-foreground">Server: <span className="text-white">{spotlightRenew.server_name}</span></p>
+            <Field label="Extend by (days)">
+              <input type="number" min={1} max={90} value={renewDays}
+                onChange={(e) => setRenewDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
+                className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <TotalRow total={spotlightRenew.costPerDay * renewDays} balance={d.balance} />
+          </ModalBody>
+          <ModalFooter>
+            <button onClick={() => setSpotlightRenew(null)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+            <button
+              disabled={renewSpotMut.isPending || d.balance < spotlightRenew.costPerDay * renewDays}
+              onClick={() => renewSpotMut.mutate({ promotion_id: spotlightRenew.id, days: renewDays })}
+              className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >{renewSpotMut.isPending ? "Extending…" : "Confirm Extension"}</button>
+          </ModalFooter>
+        </Modal>
+      )}
 
       <Footer />
+
     </div>
   );
 }

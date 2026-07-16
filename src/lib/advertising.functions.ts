@@ -45,7 +45,7 @@ export const getAdvertisingDashboard = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
 
-    const [{ data: servers }, { data: wallet }, { data: transactions }, { data: promotions }, { data: pricing }] =
+    const [{ data: servers }, { data: wallet }, { data: transactions }, { data: promotions }, { data: pricing }, { data: spotlightPricing }] =
       await Promise.all([
         supabase
           .from("servers")
@@ -61,7 +61,7 @@ export const getAdvertisingDashboard = createServerFn({ method: "GET" })
           .limit(50),
         supabase
           .from("promotions")
-          .select("id, server_id, type, start_date, end_date, token_cost, payment_status, created_at")
+          .select("id, server_id, type, spotlight_position, start_date, end_date, token_cost, payment_status, created_at")
           .eq("owner_id", userId)
           .order("created_at", { ascending: false })
           .limit(100),
@@ -69,6 +69,10 @@ export const getAdvertisingDashboard = createServerFn({ method: "GET" })
           .from("promotion_pricing")
           .select("type, name, description, cost_per_day, exclusive")
           .order("cost_per_day", { ascending: false }),
+        supabase
+          .from("spotlight_pricing")
+          .select("position, cost_per_day, tier")
+          .order("position", { ascending: true }),
       ]);
 
     const approved = (servers ?? []).filter((s) => s.status === "approved");
@@ -84,7 +88,7 @@ export const getAdvertisingDashboard = createServerFn({ method: "GET" })
 
     // Slot availability for exclusive types: look up latest paid promotion + occupant across all users
     const priceRows = (pricing ?? []) as { type: PromotionType; name: string; description: string; cost_per_day: number; exclusive: boolean }[];
-    const exclusiveTypes = priceRows.filter((p) => p.exclusive).map((p) => p.type);
+    const exclusiveTypes = priceRows.filter((p) => p.exclusive && p.type !== "spotlight").map((p) => p.type);
     let slotState: Record<string, { occupied: boolean; next_available: string | null; occupant_name: string | null; owned_by_me: boolean; my_promotion_id: string | null }> = {};
     if (exclusiveTypes.length > 0) {
       const nowIso = new Date().toISOString();
@@ -121,6 +125,34 @@ export const getAdvertisingDashboard = createServerFn({ method: "GET" })
       }
     }
 
+    // Spotlight positional slots (1..10)
+    const nowIso = new Date().toISOString();
+    const { data: activeSpots } = await supabase
+      .from("promotions")
+      .select("id, spotlight_position, end_date, server_id, owner_id")
+      .eq("type", "spotlight")
+      .eq("payment_status", "paid")
+      .gt("end_date", nowIso);
+    const spotServerIds = Array.from(new Set((activeSpots ?? []).map((r) => r.server_id)));
+    let spotNameMap: Record<string, string> = {};
+    if (spotServerIds.length) {
+      const { data: rows } = await supabase.from("servers").select("id, current_name").in("id", spotServerIds);
+      spotNameMap = Object.fromEntries((rows ?? []).map((r) => [r.id, r.current_name]));
+    }
+    const spotlightSlots = (spotlightPricing ?? []).map((s) => {
+      const active = (activeSpots ?? []).find((a) => a.spotlight_position === s.position);
+      return {
+        position: s.position as number,
+        tier: s.tier as "premium" | "standard",
+        cost_per_day: s.cost_per_day as number,
+        occupied: !!active,
+        end_date: active?.end_date ?? null,
+        occupant_name: active ? (spotNameMap[active.server_id] ?? null) : null,
+        owned_by_me: active ? active.owner_id === userId : false,
+        my_promotion_id: active && active.owner_id === userId ? active.id : null,
+      };
+    });
+
     const nowMs = Date.now();
     const enrichedPromos = (promotions ?? []).map((p) => ({
       ...p,
@@ -138,9 +170,11 @@ export const getAdvertisingDashboard = createServerFn({ method: "GET" })
       promotions: enrichedPromos,
       pricing: priceRows,
       slotState,
+      spotlightSlots,
       packages: CREDIT_PACKAGES,
     };
   });
+
 
 // ---------- Create promotion (uses server-side pricing) ----------
 const createInput = z.object({
@@ -182,6 +216,50 @@ export const createTokenPromotion = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { id: promoId, cost };
   });
+
+// ---------- Create Spotlight positional promotion ----------
+const createSpotlightInput = z.object({
+  server_id: z.string().uuid(),
+  position: z.number().int().min(1).max(10),
+  days: z.number().int().min(1).max(90),
+});
+
+export const createSpotlightPromotion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => createSpotlightInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: id, error } = await context.supabase.rpc("create_spotlight_promotion", {
+      _server_id: data.server_id,
+      _position: data.position,
+      _days: data.days,
+    });
+    if (error) throw new Error(error.message);
+    return { id };
+  });
+
+// ---------- Renew spotlight ----------
+export const renewSpotlightPromotion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ promotion_id: z.string().uuid(), days: z.number().int().min(1).max(90) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: promo, error } = await context.supabase
+      .from("promotions")
+      .select("server_id, type, spotlight_position, owner_id")
+      .eq("id", data.promotion_id)
+      .maybeSingle();
+    if (error || !promo) throw new Error("Promotion not found");
+    if (promo.owner_id !== context.userId) throw new Error("Not your promotion");
+    if (promo.type !== "spotlight" || !promo.spotlight_position) throw new Error("Not a spotlight promotion");
+
+    const { data: id, error: rpcErr } = await context.supabase.rpc("create_spotlight_promotion", {
+      _server_id: promo.server_id,
+      _position: promo.spotlight_position,
+      _days: data.days,
+    });
+    if (rpcErr) throw new Error(rpcErr.message);
+    return { id };
+  });
+
 
 // ---------- Renew promotion ----------
 const renewInput = z.object({ promotion_id: z.string().uuid(), days: z.number().int().min(1).max(90) });
