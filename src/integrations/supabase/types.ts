@@ -91,6 +91,7 @@ export type Database = {
           payment_status: Database["public"]["Enums"]["payment_status"]
           position: number
           server_id: string
+          spotlight_position: number | null
           start_date: string
           token_cost: number
           type: Database["public"]["Enums"]["promotion_type"]
@@ -103,6 +104,7 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"]
           position?: number
           server_id: string
+          spotlight_position?: number | null
           start_date?: string
           token_cost?: number
           type: Database["public"]["Enums"]["promotion_type"]
@@ -115,6 +117,7 @@ export type Database = {
           payment_status?: Database["public"]["Enums"]["payment_status"]
           position?: number
           server_id?: string
+          spotlight_position?: number | null
           start_date?: string
           token_cost?: number
           type?: Database["public"]["Enums"]["promotion_type"]
@@ -303,6 +306,27 @@ export type Database = {
         }
         Relationships: []
       }
+      spotlight_pricing: {
+        Row: {
+          cost_per_day: number
+          position: number
+          tier: string
+          updated_at: string
+        }
+        Insert: {
+          cost_per_day: number
+          position: number
+          tier: string
+          updated_at?: string
+        }
+        Update: {
+          cost_per_day?: number
+          position?: number
+          tier?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       token_transactions: {
         Row: {
           amount: number
@@ -455,6 +479,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_spotlight_promotion: {
+        Args: { _days: number; _position: number; _server_id: string }
+        Returns: string
+      }
       create_token_promotion: {
         Args: {
           _cost: number
