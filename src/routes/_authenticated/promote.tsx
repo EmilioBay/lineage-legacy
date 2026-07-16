@@ -49,6 +49,9 @@ function PromotePage() {
   const fetchDashboard = useServerFn(getAdvertisingDashboard);
   const createPromo = useServerFn(createTokenPromotion);
   const renewPromo = useServerFn(renewPromotion);
+  const createSpot = useServerFn(createSpotlightPromotion);
+  const renewSpot = useServerFn(renewSpotlightPromotion);
+
   const qc = useQueryClient();
 
   const { data, isLoading } = useQuery({
