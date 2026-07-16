@@ -481,8 +481,61 @@ function PromotePage() {
         </Modal>
       )}
 
+      {/* Spotlight take modal */}
+      {spotlightModal && (
+        <Modal onClose={() => setSpotlightModal(null)} title={`Spotlight — Position #${spotlightModal.position}`}>
+          <ModalBody>
+            <p className="text-[11px] text-muted-foreground">
+              Tier: <span className={spotlightModal.tier === "premium" ? "text-brand font-semibold" : "text-accent font-semibold"}>{spotlightModal.tier}</span>
+            </p>
+            <Field label="Server">
+              <select value={serverId} onChange={(e) => setServerId(e.target.value)} className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm">
+                {d.approvedServers.map((s) => <option key={s.id} value={s.id}>{s.current_name}</option>)}
+              </select>
+            </Field>
+            <Field label="Duration (days)">
+              <input type="number" min={1} max={90} value={days}
+                onChange={(e) => setDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
+                className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <TotalRow total={spotlightModal.costPerDay * days} balance={d.balance} />
+          </ModalBody>
+          <ModalFooter>
+            <button onClick={() => setSpotlightModal(null)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+            <button
+              disabled={createSpotMut.isPending || d.balance < spotlightModal.costPerDay * days || !serverId}
+              onClick={() => createSpotMut.mutate({ server_id: serverId, position: spotlightModal.position, days })}
+              className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >{createSpotMut.isPending ? "Working…" : "Confirm & Spend Credits"}</button>
+          </ModalFooter>
+        </Modal>
+      )}
+
+      {/* Spotlight renew modal */}
+      {spotlightRenew && (
+        <Modal onClose={() => setSpotlightRenew(null)} title={`Extend Spotlight #${spotlightRenew.position}`}>
+          <ModalBody>
+            <p className="text-xs text-muted-foreground">Server: <span className="text-white">{spotlightRenew.server_name}</span></p>
+            <Field label="Extend by (days)">
+              <input type="number" min={1} max={90} value={renewDays}
+                onChange={(e) => setRenewDays(Math.max(1, Math.min(90, Number(e.target.value) || 1)))}
+                className="w-full mt-1 bg-background border border-border rounded-lg px-3 py-2 text-sm" />
+            </Field>
+            <TotalRow total={spotlightRenew.costPerDay * renewDays} balance={d.balance} />
+          </ModalBody>
+          <ModalFooter>
+            <button onClick={() => setSpotlightRenew(null)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-white">Cancel</button>
+            <button
+              disabled={renewSpotMut.isPending || d.balance < spotlightRenew.costPerDay * renewDays}
+              onClick={() => renewSpotMut.mutate({ promotion_id: spotlightRenew.id, days: renewDays })}
+              className="bg-brand text-brand-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            >{renewSpotMut.isPending ? "Extending…" : "Confirm Extension"}</button>
+          </ModalFooter>
+        </Modal>
+      )}
 
       <Footer />
+
     </div>
   );
 }
