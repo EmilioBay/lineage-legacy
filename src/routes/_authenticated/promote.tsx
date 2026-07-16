@@ -16,7 +16,8 @@ import {
 
 
 const BANNER_TYPES: PromotionType[] = ["banner", "banner_left", "banner_right"];
-const HOMEPAGE_TYPES: PromotionType[] = ["spotlight", "sponsored", "sponsored_new"];
+const HOMEPAGE_TYPES: PromotionType[] = ["sponsored", "sponsored_new"];
+
 
 const SLOT_META: Record<PromotionType, { size: string; hint: string }> = {
   banner:        { size: "1200 × 120 px", hint: "Homepage top strip banner." },
