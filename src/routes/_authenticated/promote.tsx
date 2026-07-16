@@ -56,12 +56,15 @@ function PromotePage() {
     queryFn: () => fetchDashboard(),
   });
 
-  const [category, setCategory] = useState<"banner" | "homepage">("banner");
+  const [category, setCategory] = useState<"banner" | "spotlight" | "homepage">("banner");
   const [promoModal, setPromoModal] = useState<{ type: PromotionType; name: string; costPerDay: number } | null>(null);
   const [renewModal, setRenewModal] = useState<{ id: string; server_name: string; type: string; costPerDay: number } | null>(null);
+  const [spotlightModal, setSpotlightModal] = useState<{ position: number; tier: "premium" | "standard"; costPerDay: number } | null>(null);
+  const [spotlightRenew, setSpotlightRenew] = useState<{ id: string; position: number; server_name: string; costPerDay: number } | null>(null);
   const [serverId, setServerId] = useState("");
   const [days, setDays] = useState(7);
   const [renewDays, setRenewDays] = useState(7);
+
 
   const createMut = useMutation({
     mutationFn: (input: { server_id: string; type: PromotionType; days: number }) => createPromo({ data: input }),
