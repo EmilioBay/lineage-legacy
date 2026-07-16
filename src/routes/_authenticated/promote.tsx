@@ -89,6 +89,27 @@ function PromotePage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const createSpotMut = useMutation({
+    mutationFn: (input: { server_id: string; position: number; days: number }) => createSpot({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["advertising-dashboard"] });
+      toast.success("Spotlight position secured");
+      setSpotlightModal(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const renewSpotMut = useMutation({
+    mutationFn: (input: { promotion_id: string; days: number }) => renewSpot({ data: input }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["advertising-dashboard"] });
+      toast.success("Spotlight extended");
+      setSpotlightRenew(null);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const active = useMemo(() => (data?.promotions ?? []).filter((p) => p.is_active), [data]);
   const pending = useMemo(() => (data?.promotions ?? []).filter((p) => p.is_pending), [data]);
   const history = useMemo(() => (data?.promotions ?? []).filter((p) => !p.is_active && !p.is_pending), [data]);
