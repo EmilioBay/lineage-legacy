@@ -172,7 +172,7 @@ function PromotePage() {
         {/* Promotion slots by category */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            {([["banner", "Banner Advertising"], ["homepage", "Homepage Promotion"]] as const).map(([id, label]) => (
+            {([["banner", "Banner Advertising"], ["spotlight", "Spotlight Row"], ["homepage", "Homepage Promotion"]] as const).map(([id, label]) => (
               <button
                 key={id}
                 onClick={() => setCategory(id)}
