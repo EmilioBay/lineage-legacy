@@ -217,6 +217,50 @@ export const createTokenPromotion = createServerFn({ method: "POST" })
     return { id: promoId, cost };
   });
 
+// ---------- Create Spotlight positional promotion ----------
+const createSpotlightInput = z.object({
+  server_id: z.string().uuid(),
+  position: z.number().int().min(1).max(10),
+  days: z.number().int().min(1).max(90),
+});
+
+export const createSpotlightPromotion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => createSpotlightInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: id, error } = await context.supabase.rpc("create_spotlight_promotion", {
+      _server_id: data.server_id,
+      _position: data.position,
+      _days: data.days,
+    });
+    if (error) throw new Error(error.message);
+    return { id };
+  });
+
+// ---------- Renew spotlight ----------
+export const renewSpotlightPromotion = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => z.object({ promotion_id: z.string().uuid(), days: z.number().int().min(1).max(90) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: promo, error } = await context.supabase
+      .from("promotions")
+      .select("server_id, type, spotlight_position, owner_id")
+      .eq("id", data.promotion_id)
+      .maybeSingle();
+    if (error || !promo) throw new Error("Promotion not found");
+    if (promo.owner_id !== context.userId) throw new Error("Not your promotion");
+    if (promo.type !== "spotlight" || !promo.spotlight_position) throw new Error("Not a spotlight promotion");
+
+    const { data: id, error: rpcErr } = await context.supabase.rpc("create_spotlight_promotion", {
+      _server_id: promo.server_id,
+      _position: promo.spotlight_position,
+      _days: data.days,
+    });
+    if (rpcErr) throw new Error(rpcErr.message);
+    return { id };
+  });
+
+
 // ---------- Renew promotion ----------
 const renewInput = z.object({ promotion_id: z.string().uuid(), days: z.number().int().min(1).max(90) });
 
