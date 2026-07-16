@@ -187,6 +187,57 @@ function PromotePage() {
             ))}
           </div>
 
+          {category === "spotlight" ? (
+            <div>
+              <div className="mb-3 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
+                <span className="inline-flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full bg-brand" /> Premium (Positions 1–3)</span>
+                <span className="inline-flex items-center gap-1.5"><span className="inline-block w-2 h-2 rounded-full bg-accent" /> Standard (Positions 4–10, FIFO)</span>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                {(d.spotlightSlots ?? []).map((s) => {
+                  const premium = s.tier === "premium";
+                  const mine = s.owned_by_me;
+                  return (
+                    <div key={s.position} className={`relative bg-surface border rounded-lg p-3 flex flex-col ${
+                      mine ? "border-brand/50" : s.occupied ? "border-border/60" : premium ? "border-brand/30" : "border-border hover:border-accent/40 transition-colors"
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-[9px] uppercase font-bold ${premium ? "text-brand" : "text-accent"}`}>#{s.position}</span>
+                          <span className="text-[9px] uppercase font-bold text-muted-foreground">{premium ? "Premium" : "Standard"}</span>
+                        </div>
+                        <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
+                          mine ? "border-brand/40 text-brand bg-brand/10"
+                            : s.occupied ? "border-accent/40 text-accent bg-accent/10"
+                            : "border-success/40 text-success bg-success/10"
+                        }`}>{mine ? "Yours" : s.occupied ? "Occupied" : "Free"}</span>
+                      </div>
+                      <div className="mt-2 text-sm font-mono text-brand font-bold">{s.cost_per_day}<span className="text-[10px] text-muted-foreground font-normal"> /day</span></div>
+                      {s.occupied && s.occupant_name && (
+                        <div className="mt-1 text-[10px] text-muted-foreground truncate">{s.occupant_name}</div>
+                      )}
+                      {s.occupied && s.end_date && (
+                        <div className="mt-0.5 text-[10px] text-muted-foreground">
+                          {mine ? "Exp." : "Free"}: <span className="text-white font-mono">{daysUntil(s.end_date)}d</span>
+                        </div>
+                      )}
+                      {mine && s.my_promotion_id ? (
+                        <button
+                          onClick={() => setSpotlightRenew({ id: s.my_promotion_id!, position: s.position, server_name: s.occupant_name ?? "", costPerDay: s.cost_per_day })}
+                          className="mt-2 w-full bg-brand/15 border border-brand/30 text-brand text-[11px] font-semibold py-1 rounded hover:bg-brand/25 transition"
+                        >Extend</button>
+                      ) : !s.occupied ? (
+                        <button
+                          onClick={() => { setSpotlightModal({ position: s.position, tier: s.tier, costPerDay: s.cost_per_day }); setServerId(d.approvedServers[0]?.id ?? ""); setDays(7); }}
+                          className={`mt-2 w-full text-[11px] font-semibold py-1 rounded transition ${premium ? "bg-brand text-brand-foreground hover:opacity-90" : "bg-accent text-accent-foreground hover:opacity-90"}`}
+                        >Take</button>
+                      ) : null}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             {d.pricing
               .filter((p) => (category === "banner" ? BANNER_TYPES : HOMEPAGE_TYPES).includes(p.type))
@@ -245,6 +296,8 @@ function PromotePage() {
                 );
               })}
           </div>
+          )}
+
         </section>
 
         {/* Current promotions */}
