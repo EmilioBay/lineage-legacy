@@ -9,8 +9,11 @@ import {
   getAdvertisingDashboard,
   createTokenPromotion,
   renewPromotion,
+  createSpotlightPromotion,
+  renewSpotlightPromotion,
   type PromotionType,
 } from "@/lib/advertising.functions";
+
 
 const BANNER_TYPES: PromotionType[] = ["banner", "banner_left", "banner_right"];
 const HOMEPAGE_TYPES: PromotionType[] = ["spotlight", "sponsored", "sponsored_new"];
