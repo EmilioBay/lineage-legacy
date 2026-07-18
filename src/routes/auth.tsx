@@ -6,11 +6,20 @@ import { lovable } from "@/integrations/lovable/index";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({ meta: [{ title: "Sign in — L2Index" }] }),
+  validateSearch: (s: Record<string, unknown>) => ({
+    next: typeof s.next === "string" ? s.next : undefined,
+  }),
   component: AuthPage,
 });
 
+function isSafeNext(n: string | undefined): n is string {
+  return !!n && n.startsWith("/") && !n.startsWith("//");
+}
+
 function AuthPage() {
   const navigate = useNavigate();
+  const { next } = Route.useSearch();
+  const safeNext = isSafeNext(next) ? next : undefined;
   const [mode, setMode] = useState<"sign_in" | "sign_up" | "forgot">("sign_in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -18,30 +27,40 @@ function AuthPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) navigate({ to: "/dashboard" });
+      if (data.user) {
+        if (safeNext) window.location.assign(safeNext);
+        else navigate({ to: "/dashboard" });
+      }
     });
-  }, [navigate]);
+  }, [navigate, safeNext]);
+
+  function goPostAuth() {
+    if (safeNext) window.location.assign(safeNext);
+    else navigate({ to: "/dashboard" });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     try {
       if (mode === "sign_up") {
+        const emailRedirectTo = safeNext
+          ? `${window.location.origin}${safeNext}`
+          : window.location.origin;
         const { error } = await supabase.auth.signUp({
           email, password,
-          options: { emailRedirectTo: window.location.origin },
+          options: { emailRedirectTo },
         });
         if (error) throw error;
         toast.success("Account created. Signing you in…");
-        // With auto-confirm enabled, signUp returns a session — but be defensive.
         const { data: sess } = await supabase.auth.getSession();
-        if (sess.session) navigate({ to: "/dashboard" });
+        if (sess.session) goPostAuth();
         else setMode("sign_in");
       } else if (mode === "sign_in") {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("Welcome back.");
-        navigate({ to: "/dashboard" });
+        goPostAuth();
       } else {
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: `${window.location.origin}/reset-password`,
@@ -58,10 +77,13 @@ function AuthPage() {
   }
 
   async function google() {
-    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+    const redirectUri = safeNext
+      ? `${window.location.origin}${safeNext}`
+      : window.location.origin;
+    const result = await lovable.auth.signInWithOAuth("google", { redirect_uri: redirectUri });
     if (result.error) toast.error((result.error as Error).message);
     if (result.redirected) return;
-    navigate({ to: "/dashboard" });
+    goPostAuth();
   }
 
   const title = mode === "sign_in" ? "Sign in" : mode === "sign_up" ? "Create account" : "Reset password";
