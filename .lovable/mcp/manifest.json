@@ -1,0 +1,107 @@
+{
+  "version": 1,
+  "sdk_version": "0.23.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://zaybyovihnvfdzzhqpxe.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "l2index-mcp",
+      "version": "0.1.0",
+      "title": "L2Index MCP"
+    },
+    "tools": [
+      {
+        "name": "list_servers",
+        "title": "List L2 servers",
+        "description": "List approved Lineage 2 servers on L2Index with optional search across name, domain, chronicle, and rates. Returns basic listing info sorted by current-season votes.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "query": {
+              "description": "Optional search term matched against name, domain, chronicle, rates.",
+              "type": "string",
+              "maxLength": 100
+            },
+            "limit": {
+              "description": "Max rows to return (default 25).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_server",
+        "title": "Get L2 server detail",
+        "description": "Fetch full details for one approved server on L2Index, including name/domain history, yearly rankings, and lifetime vote count. Accepts the server UUID.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "server_id": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+              "description": "The server's UUID."
+            }
+          },
+          "required": [
+            "server_id"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_my_servers",
+        "title": "List my L2 servers",
+        "description": "List servers owned by the currently signed-in L2Index user, with status (pending, approved, changes_requested, rejected) and current-season vote counts.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_credit_balance",
+        "title": "Get Index Credits balance",
+        "description": "Return the current Index Credits balance and the last 20 credit transactions for the signed-in L2Index user.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
